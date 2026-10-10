@@ -308,8 +308,9 @@ const WF = {
     PendingFaculty: {label:'รอคณะอนุมัติ', role:'FAC', sla:3, tone:'wait', batch:'approve',
                      actions:[{id:'approve', label:'อนุมัติ', to:'PendingFinance', kind:'primary'},
                               {id:'reject', label:'ไม่อนุมัติ', to:'Rejected', reason:true, kind:'danger'}]},
-    PendingFinance: {label:'พัสดุดำเนินการจัดซื้อ', role:'FIN', sla:10, tone:'wait',
-                     form: it => `<div class="field"><label for="f-actual">ยอดจัดซื้อจริง (บาท)</label><input id="f-actual" type="number" min="0" max="${it.data.amount}" value="${it.data.amount}"></div>`,
+    PendingFinance: {label:'พัสดุจัดซื้อผ่าน WOLF → e-GP', role:'FIN', sla:10, tone:'wait',
+                     form: it => `<div class="field"><label for="f-actual">ยอดจัดซื้อจริง (บาท)</label><input id="f-actual" type="number" min="0" max="${it.data.amount}" value="${it.data.amount}"></div>
+                                  <p class="hint muted">เฟส 1.5: RMS ส่งคำขอเข้า WOLF และรับสถานะ/ยอดจริงกลับอัตโนมัติ</p>`,
                      collect: it => { const v = Number(document.getElementById('f-actual').value);
                        return (!(v > 0) || v > it.data.amount) ? {error:'ยอดจริงต้องมากกว่า 0 และไม่เกินยอดที่อนุมัติ'} : {data:{actual:v}}; },
                      actions:[{id:'done', label:'ตรวจรับและจ่ายเงินแล้ว', to:'Completed', kind:'primary'}]},
@@ -699,7 +700,7 @@ function pBudget(p){
   const l = ledger(p), t = totals(p), f = FUNDERS[p.funder];
   const exps = S.items.filter(i => i.projectId === p.id && (i.type === 'advance' || i.type === 'procurement'));
   const canReq = S.role === 'PI' && p.pi === ROLES.PI.name && p.status === 'active';
-  return `<section class="panel"><div class="panel-head"><h2>งบประมาณตามหมวด</h2><span class="small muted">ยอดใช้จริงเฟส 1.5 ดึงจาก SAP</span></div>
+  return `<section class="panel"><div class="panel-head"><h2>งบประมาณตามหมวด</h2><span class="small muted">ยอดใช้จริง: เฟส 1.5 นำเข้าจาก SAP ตาม Internal Order · เฟส 2 ผ่าน API ของ S/4HANA</span></div>
     <div class="tablewrap"><table><thead><tr><th>หมวด</th><th class="r">งบตามแผน</th><th class="r">ผูกพัน</th><th class="r">ใช้จริง</th><th class="r">คงเหลือ</th><th></th></tr></thead><tbody>
     ${l.map(x => `<tr><td>${esc(x.cat)}</td><td class="r num">${baht(x.planned)}</td><td class="r num">${baht(x.committed)}</td><td class="r num">${baht(x.actual)}</td><td class="r num"><b>${baht(x.remaining)}</b></td>
       <td style="min-width:110px"><div class="bar"><i class="a" style="width:${pct(x.actual, x.planned)}%"></i><i class="c" style="width:${pct(x.committed, x.planned)}%"></i></div></td></tr>`).join('')}
