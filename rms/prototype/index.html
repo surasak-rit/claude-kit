@@ -1,0 +1,961 @@
+<title>RMS ระบบทุนวิจัย</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sticky top bar with role switcher, left nav + work area; nav becomes a horizontal strip on phones. */
+:root{
+  --bg:#f3f6f7; --surface:#ffffff; --sunken:#eaf0f2; --ink:#14232a; --muted:#5a6b74; --line:#d7e0e4;
+  --accent:#0d6670; --accent-ink:#ffffff; --accent-soft:#dff0f1;
+  --ok:#22744a; --ok-soft:#e1f2e8; --warn:#9a5c00; --warn-soft:#fbefd9; --bad:#b0281f; --bad-soft:#fbe4e1;
+  --f-display:"Anuphan","IBM Plex Sans Thai","Noto Sans Thai",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans Thai","Noto Sans Thai","Leelawadee UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1518; --surface:#152025; --sunken:#1b2a30; --ink:#e2eaed; --muted:#92a3ac; --line:#26363c;
+  --accent:#53b5bd; --accent-ink:#04211f; --accent-soft:#123a3e;
+  --ok:#62c48f; --ok-soft:#12321f; --warn:#e3a84d; --warn-soft:#37280f; --bad:#f08a80; --bad-soft:#3b1814;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1518; --surface:#152025; --sunken:#1b2a30; --ink:#e2eaed; --muted:#92a3ac; --line:#26363c;
+  --accent:#53b5bd; --accent-ink:#04211f; --accent-soft:#123a3e;
+  --ok:#62c48f; --ok-soft:#12321f; --warn:#e3a84d; --warn-soft:#37280f; --bad:#f08a80; --bad-soft:#3b1814;
+  color-scheme:dark}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
+h1,h2,h3{font-family:var(--f-display);line-height:1.3;margin:0;text-wrap:balance}
+h1{font-size:1.5rem;font-weight:700}
+h2{font-size:1.15rem;font-weight:600}
+h3{font-size:1rem;font-weight:600}
+p{margin:0}
+.num,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.num{white-space:nowrap}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);
+  display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1.25rem;padding:.6rem 16px}
+.brand{display:flex;align-items:baseline;gap:.5rem;margin-right:auto}
+.brand b{font-family:var(--f-display);font-size:1.15rem;color:var(--accent);letter-spacing:.02em}
+.brand span{font-size:.85rem;color:var(--muted)}
+.who{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.who label{font-size:.8rem;color:var(--muted)}
+.who select{background:var(--sunken);border:1px solid var(--line);border-radius:var(--r);padding:.3rem .5rem;min-width:0;max-width:100%}
+.who .person{font-size:.85rem;line-height:1.3}
+.who .person small{display:block;color:var(--muted)}
+
+.shell{display:grid;grid-template-columns:210px minmax(0,1fr);min-height:calc(100vh - 60px)}
+nav.side{border-right:1px solid var(--line);padding:1rem .6rem;display:flex;flex-direction:column;gap:.15rem;background:var(--surface)}
+nav.side button{all:unset;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:.5rem;padding:.5rem .7rem;border-radius:var(--r);color:var(--ink)}
+nav.side button:hover{background:var(--sunken)}
+nav.side button[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav.side button:focus-visible{outline:2px solid var(--accent)}
+nav.side .sep{height:1px;background:var(--line);margin:.6rem .4rem}
+nav.side .foot{margin-top:auto;padding:.6rem .7rem;font-size:.78rem;color:var(--muted)}
+.count{font-family:var(--f-mono);font-size:.75rem;background:var(--accent);color:var(--accent-ink);border-radius:99px;padding:0 .45rem;min-width:1.4rem;text-align:center}
+main{padding-block:1.5rem 3rem;padding-inline:clamp(16px,3vw,2.25rem);min-width:0;display:flex;flex-direction:column;gap:1.25rem}
+
+@media (max-width:760px){
+  .shell{grid-template-columns:1fr}
+  nav.side{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:.4rem 12px;gap:.25rem}
+  nav.side button{white-space:nowrap}
+  nav.side .sep,nav.side .foot{display:none}
+}
+
+/* building blocks */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:1rem 1.1rem;display:flex;flex-direction:column;gap:.8rem;min-width:0}
+.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:.75rem;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:1rem}
+.crumb{font-size:.85rem;color:var(--muted);display:flex;gap:.4rem;flex-wrap:wrap}
+.crumb button{all:unset;cursor:pointer;color:var(--accent)}
+.crumb button:focus-visible{outline:2px solid var(--accent)}
+.pagehead{display:flex;flex-direction:column;gap:.35rem}
+.meta{display:flex;flex-wrap:wrap;gap:.3rem 1.25rem;font-size:.88rem;color:var(--muted)}
+.meta b{color:var(--ink);font-weight:500}
+
+.pill{display:inline-flex;align-items:center;gap:.3rem;font-size:.78rem;font-weight:500;padding:.05rem .55rem;border-radius:99px;white-space:nowrap;background:var(--sunken);color:var(--muted)}
+.pill::before{content:"";width:.45rem;height:.45rem;border-radius:50%;background:currentColor}
+.pill.wait{background:var(--accent-soft);color:var(--accent)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.tag{font-size:.75rem;border:1px solid var(--line);border-radius:4px;padding:0 .4rem;color:var(--muted);white-space:nowrap}
+
+.tablewrap{overflow-x:auto;margin-inline:-.2rem}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th{text-align:left;font-weight:500;color:var(--muted);font-size:.78rem;letter-spacing:.03em;padding:.45rem .6rem;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:.6rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--sunken)}
+.t-title{font-weight:500}
+@media (max-width:760px){td:has(.t-title){min-width:15rem}}
+.t-sub{font-size:.8rem;color:var(--muted)}
+
+.btn{cursor:pointer;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:.42rem .9rem;font-weight:500;line-height:1.3}
+.btn:hover{background:var(--sunken)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.btn.sm{padding:.2rem .6rem;font-size:.85rem}
+.btns{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+
+.tabs{display:flex;gap:.25rem;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{all:unset;cursor:pointer;padding:.5rem .8rem;border-bottom:2px solid transparent;color:var(--muted);white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--accent);border-color:var(--accent);font-weight:600}
+.tabs button:focus-visible{outline:2px solid var(--accent)}
+
+.field{display:flex;flex-direction:column;gap:.25rem;min-width:0}
+.field label{font-size:.82rem;color:var(--muted)}
+.field input,.field select,.field textarea{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:.45rem .6rem;width:100%;min-width:0}
+.field textarea{min-height:5.5rem;resize:vertical}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:.75rem}
+.check{display:flex;gap:.5rem;align-items:flex-start;font-size:.9rem}
+.hint{font-size:.82rem}
+.hint.bad{color:var(--bad)} .hint.ok{color:var(--ok)}
+
+.notice{border-radius:var(--r);padding:.65rem .85rem;font-size:.9rem;display:flex;gap:.6rem;align-items:flex-start}
+.notice.bad{background:var(--bad-soft);color:var(--bad)}
+.notice.warn{background:var(--warn-soft);color:var(--warn)}
+.notice.info{background:var(--accent-soft);color:var(--accent)}
+.notice.ok{background:var(--ok-soft);color:var(--ok)}
+
+.bar{height:.5rem;border-radius:99px;background:var(--sunken);overflow:hidden;display:flex;min-width:80px}
+.bar i{display:block;height:100%}
+.bar .a{background:var(--accent)} .bar .c{background:var(--warn)}
+.legend{display:flex;gap:1rem;font-size:.78rem;color:var(--muted);flex-wrap:wrap}
+.legend span::before{content:"";display:inline-block;width:.6rem;height:.6rem;border-radius:2px;margin-right:.3rem;vertical-align:middle;background:var(--sw)}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:1rem}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:.8rem 1rem;display:flex;flex-direction:column;gap:.15rem}
+.kpi .v{font-family:var(--f-display);font-size:1.55rem;font-weight:600;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:.8rem;color:var(--muted)}
+
+.checklist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.45rem}
+.checklist li{display:flex;gap:.6rem;align-items:flex-start}
+.checklist .mk{flex:none;width:1.3rem;height:1.3rem;border-radius:50%;display:grid;place-items:center;font-size:.75rem;font-weight:700}
+.checklist .y .mk{background:var(--ok-soft);color:var(--ok)}
+.checklist .n .mk{background:var(--bad-soft);color:var(--bad)}
+
+.timeline{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.timeline li{display:grid;grid-template-columns:7.5rem minmax(0,1fr);gap:.75rem;padding:.55rem 0;border-bottom:1px solid var(--line);font-size:.88rem}
+.timeline li:last-child{border-bottom:0}
+.timeline .when{color:var(--muted);font-size:.8rem}
+.timeline .sys{color:var(--accent);font-weight:500}
+@media (max-width:520px){.timeline li{grid-template-columns:1fr;gap:.1rem}}
+
+.doc{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:1.25rem 1.4rem;font-size:.92rem;max-height:60vh;overflow:auto;white-space:pre-wrap;line-height:1.75}
+.doc h3{text-align:center;margin-bottom:.5rem;white-space:normal}
+dialog{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);color:var(--ink);padding:1.1rem;width:min(720px,calc(100vw - 32px));max-height:calc(100vh - 48px)}
+dialog::backdrop{background:rgb(0 0 0 / .45)}
+
+.toast{position:fixed;left:50%;bottom:calc(1.25rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:.55rem 1rem;border-radius:var(--r);font-size:.9rem;z-index:20;max-width:calc(100vw - 32px)}
+.empty{padding:1.5rem;text-align:center;color:var(--muted);font-size:.92rem}
+.split{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:1rem;align-items:start}
+@media (max-width:980px){.split{grid-template-columns:1fr}}
+.dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:.35rem 1rem;font-size:.9rem;margin:0}
+.dl dt{color:var(--muted)} .dl dd{margin:0}
+.rule-row{display:flex;gap:.6rem;align-items:flex-start;font-size:.9rem}
+@media (prefers-reduced-motion:no-preference){.toast{animation:up .2s ease-out}@keyframes up{from{opacity:0;transform:translate(-50%,6px)}}}
+</style>
+
+<header class="top">
+  <div class="brand"><b>RMS</b><span>ระบบบริหารจัดการเงินทุนวิจัย · ต้นแบบ</span></div>
+  <div class="who">
+    <label for="role">ดูในบทบาท</label>
+    <select id="role"></select>
+    <div class="person" id="person"></div>
+    <button class="btn sm" id="reset" type="button">รีเซ็ตข้อมูลตัวอย่าง</button>
+  </div>
+</header>
+<div class="shell">
+  <nav class="side" id="nav" aria-label="เมนูหลัก"></nav>
+  <main id="main"></main>
+</div>
+<dialog id="dlg"></dialog>
+
+<script>
+"use strict";
+/* ---------- utilities ---------- */
+const DAY = 86400000;
+const TODAY = (() => { const d = new Date(); d.setHours(0,0,0,0); return d; })();
+const pd = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const iso = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const today = () => iso(TODAY);
+const addDays = (n, from) => iso(new Date((from ? pd(from) : TODAY).getTime() + n*DAY));
+const diffDays = (a, b) => Math.round((pd(b) - pd(a)) / DAY);
+const fmtDate = s => s ? pd(s).toLocaleDateString('th-TH', {day:'numeric', month:'short', year:'2-digit'}) : '—';
+const fmtTime = t => new Date(t).toLocaleString('th-TH', {day:'numeric', month:'short', year:'2-digit', hour:'2-digit', minute:'2-digit'});
+const baht = n => Number(n||0).toLocaleString('th-TH', {maximumFractionDigits:0});
+const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = p => p + '-' + Math.random().toString(36).slice(2, 7).toUpperCase();
+const sum = (arr, f) => arr.reduce((t, x) => t + (f ? f(x) : x), 0);
+
+/* ---------- roles ---------- */
+const ROLES = {
+  PI:       {label:'นักวิจัย (PI)',        name:'ผศ.ดร.สมชาย ใจดี',      sub:'คณะวิทยาศาสตร์'},
+  FAC:      {label:'คณะ / ต้นสังกัด',      name:'รศ.ดร.วิภาวี ศรีสุข',     sub:'รองคณบดีฝ่ายวิจัย คณะวิทยาศาสตร์', faculty:'คณะวิทยาศาสตร์'},
+  RO:       {label:'กองบริหารงานวิจัย',     name:'กานดา ทองดี',            sub:'เจ้าหน้าที่บริหารงานวิจัย'},
+  FIN:      {label:'การเงิน / พัสดุ',       name:'ประเสริฐ บุญมา',          sub:'กองคลัง'},
+  APPROVER: {label:'ผู้มีอำนาจอนุมัติ',     name:'ศ.ดร.ธีระ วงศ์ใหญ่',      sub:'รองอธิการบดีฝ่ายวิจัย'},
+  REVIEWER: {label:'ผู้ทรงคุณวุฒิ',         name:'ศ.ดร.มาลี รัตนกุล',       sub:'ผู้ทรงคุณวุฒิภายนอก (เข้าด้วยลิงก์ + OTP)'},
+  EXEC:     {label:'ผู้บริหาร',            name:'ผู้บริหารมหาวิทยาลัย',     sub:'ดูภาพรวมอย่างเดียว'},
+};
+const PEOPLE = [
+  {name:'ผศ.ดร.สมชาย ใจดี', faculty:'คณะวิทยาศาสตร์'},
+  {name:'ดร.อรุณี แสงทอง', faculty:'คณะวิทยาศาสตร์'},
+  {name:'รศ.ดร.ปกรณ์ มั่นคง', faculty:'คณะแพทยศาสตร์'},
+  {name:'อ.ดร.ณัฐพล เรืองศรี', faculty:'คณะวิศวกรรมศาสตร์'},
+];
+
+/* ---------- funder profiles (configurable, not hard-coded rules) ---------- */
+const FUNDERS = {
+  F1: {id:'F1', name:'กองทุนส่งเสริมการวิจัย (ทุนภายใน)', kind:'ทุนภายใน',
+       categories:['ค่าตอบแทน','ค่าจ้าง','ค่าวัสดุ','ค่าใช้สอย','ค่าครุภัณฑ์'],
+       requiresReview:false, template:'สัญญารับทุนภายใน (มาตรฐาน) ฉบับ 2569',
+       reportForm:'แบบรายงานความก้าวหน้า ทุนภายใน v2', refundRule:'คืนเงินเหลือจ่ายทั้งหมดภายใน 30 วันหลังปิดโครงการ',
+       outputs:'บทความตีพิมพ์ในวารสารระดับชาติขึ้นไป 1 เรื่อง ภายใน 12 เดือนหลังปิดโครงการ', advanceDays:30, budgetShiftPct:20, export:'—'},
+  F2: {id:'F2', name:'แหล่งทุนภายนอก ก (ตัวอย่าง)', kind:'ทุนภายนอก',
+       categories:['ค่าตอบแทน','ค่าจ้าง','ค่าวัสดุ','ค่าใช้สอย','ค่าครุภัณฑ์'],
+       requiresReview:true, template:'สัญญาตามแบบของแหล่งทุน (ผ่านนิติการ)',
+       reportForm:'แบบรายงานตามรูปแบบแหล่งทุน', refundRule:'คืนเงินเหลือจ่ายและดอกผลให้แหล่งทุน',
+       outputs:'บทความวารสารนานาชาติ (Q1–Q2) 1 เรื่อง และรายงานการนำไปใช้ประโยชน์', advanceDays:30, budgetShiftPct:10, export:'Excel ตามแม่แบบแหล่งทุน'},
+};
+
+/* ---------- workflow definitions ---------- */
+const reasonOf = r => r ? ' — ' + r : '';
+const WF = {
+  contract: {label:'สัญญารับทุน', states:{
+    Draft:          {label:'กองวิจัยแก้ไขร่าง', role:'RO', sla:3, tone:'wait',
+                     actions:[{id:'send', label:'ส่งให้นักวิจัยลงนาม', to:'PendingPI', kind:'primary'}]},
+    PendingPI:      {label:'รอนักวิจัยลงนาม', role:'PI', sla:5, tone:'wait',
+                     form: () => `<label class="check"><input type="checkbox" id="f-consent"> ข้าพเจ้าได้อ่านและยอมรับเงื่อนไขในสัญญา และลงนามด้วยลายมือชื่ออิเล็กทรอนิกส์</label>`,
+                     collect: (it, act) => act.id === 'sign' && !document.getElementById('f-consent').checked ? {error:'ติ๊กยืนยันการลงนามก่อน'} : {},
+                     actions:[{id:'sign', label:'ลงนามอิเล็กทรอนิกส์', to:'PendingFaculty', kind:'primary'},
+                              {id:'edit', label:'ขอแก้ไขสัญญา', to:'Draft', reason:true}]},
+    PendingFaculty: {label:'รอคณะอนุมัติ', role:'FAC', sla:3, tone:'wait', batch:'approve',
+                     actions:[{id:'approve', label:'อนุมัติ ส่งผู้มีอำนาจ', to:'PendingApprover', kind:'primary'},
+                              {id:'return', label:'ส่งกลับนักวิจัย', to:'PendingPI', reason:true}]},
+    PendingApprover:{label:'รอผู้มีอำนาจลงนาม', role:'APPROVER', sla:3, tone:'wait', batch:'sign',
+                     actions:[{id:'sign', label:'ลงนามสัญญา', to:'Active', kind:'primary'},
+                              {id:'return', label:'ส่งกลับคณะ', to:'PendingFaculty', reason:true}]},
+    Active:         {label:'สัญญามีผล', tone:'ok', final:true},
+    Closed:         {label:'ปิดโครงการแล้ว', tone:'done', final:true},
+  }},
+  disbursement: {label:'คำขอเบิกเงินงวด', states:{
+    PendingPI:      {label:'รอนักวิจัยยืนยัน', role:'PI', sla:3, tone:'wait',
+                     actions:[{id:'confirm', label:'ยืนยันคำขอเบิก', to:'PendingFaculty', kind:'primary'}]},
+    PendingFaculty: {label:'รอคณะอนุมัติ', role:'FAC', sla:3, tone:'wait', batch:'approve',
+                     actions:[{id:'approve', label:'อนุมัติ', to:'RuleCheck', kind:'primary'},
+                              {id:'return', label:'ส่งกลับนักวิจัย', to:'PendingPI', reason:true}]},
+    RuleCheck:      {label:'ระบบตรวจเงื่อนไข', tone:'wait', auto: it => {
+                       const res = runRules(it); it.data.rules = res;
+                       const fail = res.filter(r => !r.ok);
+                       return fail.length
+                         ? {to:'Exception', label:'ตรวจเงื่อนไขอัตโนมัติ: ไม่ผ่าน', note:fail.map(r => r.label).join(', ')}
+                         : {to:'PendingFinance', label:'ตรวจเงื่อนไขอัตโนมัติ: ผ่านทุกข้อ'};
+                     }},
+    Exception:      {label:'ไม่ผ่านกฎ รอกองวิจัยพิจารณา', role:'RO', sla:2, tone:'bad',
+                     actions:[{id:'override', label:'อนุมัติข้ามกฎ (ระบุเหตุผล)', to:'PendingFinance', kind:'primary', reason:true},
+                              {id:'return', label:'ส่งกลับนักวิจัย', to:'PendingPI', reason:true}]},
+    PendingFinance: {label:'รอการเงินตรวจ', role:'FIN', sla:3, tone:'wait',
+                     actions:[{id:'verify', label:'ตรวจแล้ว ส่งผู้มีอำนาจ', to:'PendingApprover', kind:'primary'},
+                              {id:'return', label:'ส่งกลับนักวิจัย', to:'PendingPI', reason:true}]},
+    PendingApprover:{label:'รอผู้มีอำนาจอนุมัติ', role:'APPROVER', sla:2, tone:'wait', batch:'approve',
+                     actions:[{id:'approve', label:'อนุมัติเบิกจ่าย', to:'Approved', kind:'primary'}]},
+    Approved:       {label:'อนุมัติแล้ว รอโอนเงิน', role:'FIN', sla:2, tone:'wait',
+                     form: () => `<div class="field"><label for="f-sap">เลขที่เอกสาร SAP</label><input id="f-sap" class="mono" value="${'51' + Math.floor(10000000 + Math.random()*89999999)}"></div>
+                                  <p class="hint muted">MVP: การเงินบันทึกเลขเอกสารเอง · เฟส 1.5: ระบบดึงสถานะจาก SAP อัตโนมัติ</p>`,
+                     collect: () => ({data:{sapDoc:document.getElementById('f-sap').value.trim()}}),
+                     actions:[{id:'paid', label:'บันทึกว่าโอนเงินแล้ว', to:'Paid', kind:'primary'}]},
+    Paid:           {label:'โอนเงินแล้ว', tone:'ok', final:true},
+  }},
+  advance: {label:'คำขอยืมเงิน', states:{
+    PendingFaculty: {label:'รอคณะอนุมัติ', role:'FAC', sla:3, tone:'wait', batch:'approve',
+                     actions:[{id:'approve', label:'อนุมัติ', to:'PendingFinance', kind:'primary'},
+                              {id:'reject', label:'ไม่อนุมัติ', to:'Rejected', reason:true, kind:'danger'}]},
+    PendingFinance: {label:'รอการเงินจ่ายเงินยืม', role:'FIN', sla:3, tone:'wait',
+                     actions:[{id:'pay', label:'จ่ายเงินยืมแล้ว', to:'Disbursed', kind:'primary'}]},
+    Disbursed:      {label:'รอล้างหนี้', role:'PI', tone:'wait',
+                     form: it => `<div class="fields">
+                       <div class="field"><label for="f-actual">ยอดใช้จริง (บาท)</label><input id="f-actual" type="number" min="0" max="${it.data.amount}" value="${it.data.amount}"></div>
+                       <div class="field"><label for="f-files">หลักฐาน (ใบเสร็จ/ใบสำคัญ)</label><input id="f-files" type="file" multiple accept=".pdf,.jpg,.jpeg,.png"></div></div>
+                       <p class="hint muted">ถ้าใช้น้อยกว่ายอดยืม ส่วนต่างคืนพร้อมการล้างหนี้</p>`,
+                     collect: (it, act) => {
+                       const v = Number(document.getElementById('f-actual').value);
+                       const files = [...document.getElementById('f-files').files].map(f => f.name);
+                       if (!(v > 0) || v > it.data.amount) return {error:'ยอดใช้จริงต้องมากกว่า 0 และไม่เกินยอดยืม'};
+                       if (!files.length) return {error:'แนบหลักฐานอย่างน้อย 1 ไฟล์'};
+                       return {data:{actual:v, files}};
+                     },
+                     actions:[{id:'clear', label:'ส่งล้างหนี้', to:'ClearingSubmitted', kind:'primary'}]},
+    ClearingSubmitted:{label:'รอการเงินตรวจหลักฐาน', role:'FIN', sla:5, tone:'wait',
+                     actions:[{id:'accept', label:'ตรวจผ่าน ล้างหนี้', to:'Cleared', kind:'primary'},
+                              {id:'return', label:'ตีกลับ', to:'Disbursed', reason:true}]},
+    Cleared:        {label:'ล้างหนี้แล้ว', tone:'ok', final:true},
+    Rejected:       {label:'ไม่อนุมัติ', tone:'done', final:true},
+  }},
+  procurement: {label:'คำขอจัดซื้อจัดจ้าง', states:{
+    PendingFaculty: {label:'รอคณะอนุมัติ', role:'FAC', sla:3, tone:'wait', batch:'approve',
+                     actions:[{id:'approve', label:'อนุมัติ', to:'PendingFinance', kind:'primary'},
+                              {id:'reject', label:'ไม่อนุมัติ', to:'Rejected', reason:true, kind:'danger'}]},
+    PendingFinance: {label:'พัสดุดำเนินการจัดซื้อ', role:'FIN', sla:10, tone:'wait',
+                     form: it => `<div class="field"><label for="f-actual">ยอดจัดซื้อจริง (บาท)</label><input id="f-actual" type="number" min="0" max="${it.data.amount}" value="${it.data.amount}"></div>`,
+                     collect: it => { const v = Number(document.getElementById('f-actual').value);
+                       return (!(v > 0) || v > it.data.amount) ? {error:'ยอดจริงต้องมากกว่า 0 และไม่เกินยอดที่อนุมัติ'} : {data:{actual:v}}; },
+                     actions:[{id:'done', label:'ตรวจรับและจ่ายเงินแล้ว', to:'Completed', kind:'primary'}]},
+    Completed:      {label:'จัดซื้อเสร็จ', tone:'ok', final:true},
+    Rejected:       {label:'ไม่อนุมัติ', tone:'done', final:true},
+  }},
+  report: {label:'รายงาน', states:{
+    Draft:          {label:'รอส่งรายงาน', role:'PI', tone:'wait', form: reportForm, collect: reportCollect,
+                     actions:[{id:'submit', label:'ส่งรายงาน', to:'PendingFaculty', kind:'primary'}]},
+    PendingFaculty: {label:'รอคณะรับรอง', role:'FAC', sla:3, tone:'wait', batch:'approve',
+                     actions:[{id:'approve', label:'รับรองรายงาน', kind:'primary', to: it => FUNDERS[P(it.projectId).funder].requiresReview ? 'InReview' : 'Accepted'},
+                              {id:'return', label:'ส่งกลับนักวิจัย', to:'Draft', reason:true}]},
+    InReview:       {label:'ผู้ทรงคุณวุฒิประเมิน', role:'REVIEWER', sla:14, tone:'wait',
+                     form: () => `<div class="field"><label for="f-score">ผลประเมิน (1–5)</label><select id="f-score"><option>5</option><option selected>4</option><option>3</option><option>2</option><option>1</option></select></div>`,
+                     collect: () => ({data:{score:Number(document.getElementById('f-score').value)}}),
+                     actions:[{id:'accept', label:'ผ่านการประเมิน', to:'Accepted', kind:'primary'},
+                              {id:'revise', label:'ขอให้แก้ไข', to:'Revision', reason:true}]},
+    Revision:       {label:'นักวิจัยแก้ไขตามข้อเสนอแนะ', role:'PI', sla:7, tone:'warn', form: reportForm, collect: reportCollect,
+                     actions:[{id:'resubmit', label:'ส่งฉบับแก้ไข', to:'InReview', kind:'primary'}]},
+    Accepted:       {label:'ผ่าน', tone:'ok', final:true},
+  }},
+  closeout: {label:'ปิดโครงการ', states:{
+    Checklist:      {label:'ตรวจรายการปิดโครงการ', role:'RO', sla:5, tone:'wait',
+                     actions:[{id:'refund', label:'แจ้งนักวิจัยคืนเงินเหลือจ่าย', to:'PendingRefund',
+                               enabled: it => refundDue(P(it.projectId)) > 0 ? true : 'ไม่มีเงินเหลือจ่ายต้องคืน'},
+                              {id:'close', label:'ปิดโครงการและออกหนังสือแจ้ง', to:'Closed', kind:'primary',
+                               enabled: it => closeChecks(P(it.projectId)).every(c => c.ok) ? true : 'ยังมีรายการที่ไม่ครบ'}]},
+    PendingRefund:  {label:'รอนักวิจัยคืนเงินเหลือจ่าย', role:'PI', sla:15, tone:'warn',
+                     form: it => { const p = P(it.projectId); return `<div class="notice info">ยอดที่ต้องคืน <b class="num">${baht(refundDue(p))}</b> บาท · ชำระผ่าน QR / ใบแจ้งชำระ เลขอ้างอิง <span class="mono">${esc(p.code)}-RF</span></div>`; },
+                     collect: it => ({data:{refundAmount:refundDue(P(it.projectId))}}),
+                     actions:[{id:'paid', label:'แจ้งชำระเงินคืนแล้ว', to:'RefundVerify', kind:'primary'}]},
+    RefundVerify:   {label:'รอการเงินยืนยันรับเงินคืน', role:'FIN', sla:3, tone:'wait',
+                     actions:[{id:'confirm', label:'ยืนยันรับเงินคืน', to:'Checklist', kind:'primary', data:{refundSettled:true}}]},
+    Closed:         {label:'ปิดโครงการแล้ว', tone:'done', final:true},
+  }},
+};
+
+function reportForm(it){
+  const c = it.data.content || {};
+  return `<div class="field"><label for="f-sum">สรุปผลการดำเนินงาน</label><textarea id="f-sum" placeholder="อย่างน้อย 30 ตัวอักษร">${esc(c.summary || '')}</textarea></div>
+  <div class="fields">
+    <div class="field"><label for="f-prog">ความก้าวหน้า (%)</label><input id="f-prog" type="number" min="0" max="100" value="${c.progress ?? (it.data.rtype === 'final' ? 100 : 50)}"></div>
+    <div class="field"><label for="f-otype">ผลผลิต (ถ้ามี)</label><select id="f-otype"><option value="">— ไม่มี —</option><option>บทความวิชาการ</option><option>ทรัพย์สินทางปัญญา</option><option>ต้นแบบ</option><option>การนำไปใช้ประโยชน์</option></select></div>
+    <div class="field"><label for="f-otitle">ชื่อผลผลิต / DOI</label><input id="f-otitle"></div>
+  </div>
+  <p class="hint muted">รายงานการเงินของงวดนี้ ระบบสร้างจากข้อมูลงบและการใช้จ่ายให้อัตโนมัติ</p>`;
+}
+function reportCollect(it){
+  const summary = document.getElementById('f-sum').value.trim();
+  const progress = Number(document.getElementById('f-prog').value);
+  const otype = document.getElementById('f-otype').value, otitle = document.getElementById('f-otitle').value.trim();
+  if (summary.length < 30) return {error:'สรุปผลการดำเนินงานต้องมีอย่างน้อย 30 ตัวอักษร'};
+  if (!(progress >= 0 && progress <= 100)) return {error:'ความก้าวหน้าต้องอยู่ระหว่าง 0–100'};
+  if (otype && !otitle) return {error:'ระบุชื่อผลผลิต'};
+  return {data:{content:{summary, progress}}, output: otype ? {type:otype, title:otitle} : null};
+}
+
+/* ---------- state ---------- */
+const KEY = 'rms-prototype-v1';
+let S;
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} }
+function load(){ try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v === 1) return s; } catch(e) {} return null; }
+const P = id => S.projects.find(p => p.id === id);
+const I = id => S.items.find(i => i.id === id);
+const itemsOf = (pid, type) => S.items.filter(i => i.projectId === pid && (!type || i.type === type));
+const stOf = it => WF[it.type].states[it.state];
+const actor = () => S.role === 'SYSTEM' ? 'ระบบ' : ROLES[S.role].name;
+
+function log(it, entry){ it.history.push({at:new Date().toISOString(), ...entry}); }
+function enter(it, to){
+  it.state = to; it.enteredAt = today();
+  const h = HOOKS[it.type + ':' + to]; if (h) h(it);
+  const st = stOf(it);
+  if (st.auto){ const r = st.auto(it); log(it, {who:'ระบบ', sys:true, action:r.label, note:r.note || ''}); enter(it, r.to); }
+}
+function createItem(type, pid, state, data, note){
+  const it = {id:uid(type.slice(0,3).toUpperCase()), type, projectId:pid, state, enteredAt:today(), createdAt:today(), data:data || {}, history:[]};
+  log(it, {who:'ระบบ', sys:true, action:note || ('สร้าง' + WF[type].label)});
+  S.items.push(it); enter(it, state); return it;
+}
+function doAction(it, act, reason, extra){
+  const from = stOf(it).label;
+  Object.assign(it.data, act.data || {}, extra || {});
+  const to = typeof act.to === 'function' ? act.to(it) : act.to;
+  log(it, {who:actor(), role:S.role, action:act.label, note:reason || '', from});
+  enter(it, to);
+}
+
+/* ---------- domain logic ---------- */
+const COND = c => c === 'contract' ? 'เมื่อสัญญามีผล' : c === 'final' ? 'เมื่อรายงานฉบับสมบูรณ์ผ่าน' : 'เมื่อรายงานความก้าวหน้าครั้งที่ ' + c.split(':')[1] + ' ผ่าน';
+const received = p => sum(p.installments.filter(i => i.status === 'paid'), i => i.amount);
+const OPEN_EXP = {advance:['PendingFaculty','PendingFinance','Disbursed','ClearingSubmitted'], procurement:['PendingFaculty','PendingFinance']};
+const COMMIT_EXP = {advance:['PendingFinance','Disbursed','ClearingSubmitted'], procurement:['PendingFinance']};
+function ledger(p){
+  return FUNDERS[p.funder].categories.map(cat => {
+    const line = p.budget[cat] || {planned:0, actual:0};
+    const exps = S.items.filter(i => i.projectId === p.id && (i.type === 'advance' || i.type === 'procurement') && i.data.cat === cat);
+    const committed = sum(exps.filter(i => COMMIT_EXP[i.type].includes(i.state)), i => i.data.amount);
+    const actual = (line.actual || 0) + sum(exps.filter(i => i.state === 'Cleared' || i.state === 'Completed'), i => i.data.actual || 0);
+    return {cat, planned:line.planned || 0, committed, actual, remaining:(line.planned || 0) - committed - actual};
+  }).filter(l => l.planned > 0);
+}
+const totals = p => { const l = ledger(p); return {planned:sum(l, x => x.planned), committed:sum(l, x => x.committed), actual:sum(l, x => x.actual)}; };
+const advanceOverdue = it => it.type === 'advance' && it.state === 'Disbursed' && it.data.clearDue < today();
+const reportOverdue = it => it.type === 'report' && it.state === 'Draft' && it.data.due < today();
+function runRules(it){
+  const p = P(it.projectId), inst = p.installments.find(i => i.seq === it.data.seq);
+  return [
+    {label:'ไม่มีเงินยืมเลยกำหนดล้างหนี้', ok:!itemsOf(p.id, 'advance').some(advanceOverdue)},
+    {label:'ไม่มีรายงานค้างส่งเลยกำหนด', ok:!itemsOf(p.id, 'report').some(reportOverdue)},
+    {label:'ยอดเบิกสะสมไม่เกินวงเงินสัญญา', ok:received(p) + inst.amount <= p.total},
+    {label:'เงื่อนไขงวดครบ (' + COND(inst.condition) + ')', ok:true},
+  ];
+}
+function refundDue(p){
+  const c = itemsOf(p.id, 'closeout')[0];
+  const t = totals(p);
+  return Math.max(0, received(p) - t.actual - t.committed - (c && c.data.refundSettled ? c.data.refundAmount || 0 : 0));
+}
+function closeChecks(p){
+  const fin = itemsOf(p.id, 'report').find(r => r.data.rtype === 'final');
+  return [
+    {label:'รายงานฉบับสมบูรณ์ผ่านการประเมิน', ok:!!fin && fin.state === 'Accepted'},
+    {label:'เบิกเงินครบทุกงวด', ok:p.installments.every(i => i.status === 'paid')},
+    {label:'ไม่มีเงินยืมหรือคำขอจัดซื้อค้าง', ok:!S.items.some(i => i.projectId === p.id && OPEN_EXP[i.type] && OPEN_EXP[i.type].includes(i.state))},
+    {label:'คืนเงินเหลือจ่ายเรียบร้อย', ok:refundDue(p) === 0},
+  ];
+}
+function obligations(p){
+  const o = [];
+  itemsOf(p.id, 'advance').filter(advanceOverdue).forEach(a => o.push('เงินยืมเลยกำหนดล้างหนี้ ' + diffDays(a.data.clearDue, today()) + ' วัน'));
+  itemsOf(p.id, 'report').filter(reportOverdue).forEach(r => o.push('รายงานค้างส่ง ' + diffDays(r.data.due, today()) + ' วัน'));
+  return o;
+}
+function makeEligible(p, cond){
+  const inst = p.installments.find(i => i.condition === cond && i.status === 'pending');
+  if (!inst) return;
+  inst.status = 'requested';
+  createItem('disbursement', p.id, 'PendingPI', {seq:inst.seq, amount:inst.amount}, 'ระบบสร้างคำขอเบิกงวดที่ ' + inst.seq + ' อัตโนมัติ (' + COND(cond) + ')');
+}
+function createReports(p){
+  const prog = p.installments.filter(i => i.condition.startsWith('report:'));
+  const D = diffDays(p.start, p.end);
+  prog.forEach((inst, k) => {
+    const n = Number(inst.condition.split(':')[1]);
+    createItem('report', p.id, 'Draft', {rtype:'progress', period:n, due:addDays(Math.round(D * (k+1) / (prog.length+1)), p.start)}, 'ระบบสร้างกำหนดส่งรายงานความก้าวหน้าครั้งที่ ' + n);
+  });
+  createItem('report', p.id, 'Draft', {rtype:'final', due:addDays(30, p.end)}, 'ระบบสร้างกำหนดส่งรายงานฉบับสมบูรณ์');
+}
+const HOOKS = {
+  'contract:Active': it => { const p = P(it.projectId); p.status = 'active'; if (!itemsOf(p.id, 'report').length) createReports(p); makeEligible(p, 'contract'); },
+  'disbursement:Paid': it => { const inst = P(it.projectId).installments.find(i => i.seq === it.data.seq); inst.status = 'paid'; inst.paidAt = today(); },
+  'report:Accepted': it => {
+    const p = P(it.projectId);
+    if (it.data.rtype === 'progress') makeEligible(p, 'report:' + it.data.period);
+    else {
+      p.status = 'closing'; makeEligible(p, 'final');
+      if (!itemsOf(p.id, 'closeout').length) createItem('closeout', p.id, 'Checklist', {}, 'ระบบเปิดรายการปิดโครงการอัตโนมัติ');
+    }
+  },
+  'closeout:Closed': it => {
+    const p = P(it.projectId); p.status = 'closed';
+    const c = itemsOf(p.id, 'contract')[0]; if (c){ c.state = 'Closed'; log(c, {who:'ระบบ', sys:true, action:'ปิดสัญญาพร้อมการปิดโครงการ'}); }
+    p.followUp = {due:addDays(365), label:FUNDERS[p.funder].outputs};
+  },
+};
+function itemTitle(it){
+  const d = it.data;
+  if (it.type === 'disbursement') return 'เบิกเงินงวดที่ ' + d.seq;
+  if (it.type === 'report') return d.rtype === 'final' ? 'รายงานฉบับสมบูรณ์' : 'รายงานความก้าวหน้าครั้งที่ ' + d.period;
+  if (it.type === 'advance' || it.type === 'procurement') return WF[it.type].label + ': ' + d.desc;
+  return WF[it.type].label;
+}
+const itemAmount = it => it.data.amount ?? null;
+
+/* ---------- visibility & tasks ---------- */
+function visible(p){
+  if (S.role === 'PI') return p.pi === ROLES.PI.name;
+  if (S.role === 'FAC') return p.faculty === ROLES.FAC.faculty;
+  if (S.role === 'REVIEWER') return itemsOf(p.id, 'report').some(r => ['InReview','Accepted','Revision'].includes(r.state) && FUNDERS[p.funder].requiresReview);
+  return true;
+}
+function tasksFor(role){
+  return S.items.filter(it => {
+    const st = stOf(it); if (!st || st.role !== role) return false;
+    const p = P(it.projectId); if (!p || p.status === 'closed') return false;
+    if (role === 'PI' && p.pi !== ROLES.PI.name) return false;
+    if (role === 'FAC' && p.faculty !== ROLES.FAC.faculty) return false;
+    if (it.type === 'report' && it.state === 'Draft' && diffDays(today(), it.data.due) > 30) return false;
+    return true;
+  });
+}
+function age(it){
+  const st = stOf(it), waited = diffDays(it.enteredAt, today());
+  if (it.type === 'report' && it.state === 'Draft'){ const left = diffDays(today(), it.data.due);
+    return left < 0 ? {txt:'เลยกำหนด ' + (-left) + ' วัน', tone:'bad', over:true} : {txt:'อีก ' + left + ' วัน', tone:left <= 7 ? 'warn' : 'wait'}; }
+  if (it.type === 'advance' && it.state === 'Disbursed'){ const left = diffDays(today(), it.data.clearDue);
+    return left < 0 ? {txt:'เลยกำหนดล้างหนี้ ' + (-left) + ' วัน', tone:'bad', over:true} : {txt:'ล้างหนี้ภายใน ' + left + ' วัน', tone:left <= 7 ? 'warn' : 'wait'}; }
+  if (!st.sla) return {txt:'รอ ' + waited + ' วัน', tone:'wait'};
+  return waited > st.sla ? {txt:'รอ ' + waited + ' วัน · เกิน SLA ' + st.sla + ' วัน', tone:'bad', over:true}
+                         : {txt:'รอ ' + waited + ' วัน · SLA ' + st.sla + ' วัน', tone:waited === st.sla ? 'warn' : 'wait'};
+}
+
+/* ---------- seed data (fictional examples) ---------- */
+function seed(){
+  S = {v:1, role:'PI', projects:[], items:[]};
+  const mk = (p) => { S.projects.push(p); return p; };
+  const raw = (type, pid, state, data, entered, hist) => {
+    const it = {id:uid(type.slice(0,3).toUpperCase()), type, projectId:pid, state, enteredAt:addDays(entered || 0), createdAt:addDays(entered || 0), data, history:[]};
+    (hist || []).forEach(h => it.history.push({at:new Date(pd(addDays(h[0])).getTime() + 9.5*3600e3).toISOString(), who:h[1], sys:h[1] === 'ระบบ', action:h[2], note:h[3] || ''}));
+    S.items.push(it); return it;
+  };
+  const B = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, {planned:v[0], actual:v[1] || 0}]));
+
+  const p1 = mk({id:'P1', code:'RMS-2569-001', title:'การพัฒนาวัสดุนาโนจากเปลือกทุเรียนเพื่อใช้กรองโลหะหนักในน้ำ', pi:'ผศ.ดร.สมชาย ใจดี', faculty:'คณะวิทยาศาสตร์', funder:'F1',
+    start:addDays(-150), end:addDays(215), total:500000, status:'active', contractNo:'วจ.001/2569',
+    budget:B({'ค่าตอบแทน':[60000,20000], 'ค่าวัสดุ':[250000,98000], 'ค่าใช้สอย':[120000,35000], 'ค่าครุภัณฑ์':[70000,0]}),
+    installments:[{seq:1, amount:200000, condition:'contract', status:'paid', paidAt:addDays(-138)}, {seq:2, amount:200000, condition:'report:1', status:'pending'}, {seq:3, amount:100000, condition:'final', status:'pending'}]});
+  raw('contract', 'P1', 'Active', {}, -142, [[-150,'ระบบ','สร้างสัญญาจาก template อัตโนมัติ'],[-149,'ผศ.ดร.สมชาย ใจดี','ลงนามอิเล็กทรอนิกส์'],[-147,'รศ.ดร.วิภาวี ศรีสุข','อนุมัติ ส่งผู้มีอำนาจ'],[-142,'ศ.ดร.ธีระ วงศ์ใหญ่','ลงนามสัญญา']]);
+  raw('disbursement', 'P1', 'Paid', {seq:1, amount:200000, sapDoc:'5100482211'}, -138, [[-142,'ระบบ','ระบบสร้างคำขอเบิกงวดที่ 1 อัตโนมัติ'],[-141,'ผศ.ดร.สมชาย ใจดี','ยืนยันคำขอเบิก'],[-140,'ระบบ','ตรวจเงื่อนไขอัตโนมัติ: ผ่านทุกข้อ'],[-138,'ประเสริฐ บุญมา','บันทึกว่าโอนเงินแล้ว']]);
+  raw('report', 'P1', 'Draft', {rtype:'progress', period:1, due:addDays(5)}, -142, [[-142,'ระบบ','ระบบสร้างกำหนดส่งรายงานความก้าวหน้าครั้งที่ 1']]);
+  raw('report', 'P1', 'Draft', {rtype:'final', due:addDays(245)}, -142, [[-142,'ระบบ','ระบบสร้างกำหนดส่งรายงานฉบับสมบูรณ์']]);
+  raw('advance', 'P1', 'Disbursed', {cat:'ค่าใช้สอย', amount:15000, desc:'ค่าเดินทางเก็บตัวอย่างเปลือกทุเรียน จ.จันทบุรี', clearDue:addDays(-3)}, -33, [[-36,'ผศ.ดร.สมชาย ใจดี','ส่งคำขอยืมเงิน'],[-35,'รศ.ดร.วิภาวี ศรีสุข','อนุมัติ'],[-33,'ประเสริฐ บุญมา','จ่ายเงินยืมแล้ว']]);
+  raw('procurement', 'P1', 'PendingFaculty', {cat:'ค่าครุภัณฑ์', amount:45000, desc:'เครื่องกวนสารแม่เหล็กพร้อมแผ่นให้ความร้อน'}, -1, [[-1,'ผศ.ดร.สมชาย ใจดี','ส่งคำขอจัดซื้อ (ผ่านการตรวจงบคงเหลือ)']]);
+
+  const p2 = mk({id:'P2', code:'RMS-2569-014', title:'แบบจำลองการพยากรณ์ฝุ่น PM2.5 รายชั่วโมงด้วยการเรียนรู้เชิงลึก', pi:'ผศ.ดร.สมชาย ใจดี', faculty:'คณะวิทยาศาสตร์', funder:'F2',
+    start:addDays(14), end:addDays(14+730), total:1200000, status:'contracting', contractNo:'วจ.ภน.014/2569',
+    budget:B({'ค่าตอบแทน':[200000], 'ค่าจ้าง':[360000], 'ค่าวัสดุ':[140000], 'ค่าใช้สอย':[300000], 'ค่าครุภัณฑ์':[200000]}),
+    installments:[{seq:1, amount:480000, condition:'contract', status:'pending'}, {seq:2, amount:480000, condition:'report:1', status:'pending'}, {seq:3, amount:240000, condition:'final', status:'pending'}]});
+  raw('contract', 'P2', 'PendingPI', {nonstandard:true}, -1, [[-4,'ระบบ','นำเข้าโครงการที่อนุมัติแล้ว และสร้างสัญญาตามแบบของแหล่งทุน'],[-1,'นิติการ','ตรวจร่างสัญญาแล้ว (สัญญาไม่ใช่แบบมาตรฐาน)']]);
+
+  const p3 = mk({id:'P3', code:'RMS-2568-087', title:'สารออกฤทธิ์ต้านเชื้อแบคทีเรียดื้อยาจากสมุนไพรไทย', pi:'ดร.อรุณี แสงทอง', faculty:'คณะวิทยาศาสตร์', funder:'F2',
+    start:addDays(-200), end:addDays(165), total:900000, status:'active', contractNo:'วจ.ภน.087/2568',
+    budget:B({'ค่าตอบแทน':[120000,40000], 'ค่าจ้าง':[180000,90000], 'ค่าวัสดุ':[400000,182000], 'ค่าใช้สอย':[200000,61000]}),
+    installments:[{seq:1, amount:360000, condition:'contract', status:'paid', paidAt:addDays(-185)}, {seq:2, amount:360000, condition:'report:1', status:'pending'}, {seq:3, amount:180000, condition:'final', status:'pending'}]});
+  raw('contract', 'P3', 'Active', {}, -190, [[-190,'ศ.ดร.ธีระ วงศ์ใหญ่','ลงนามสัญญา']]);
+  raw('report', 'P3', 'PendingFaculty', {rtype:'progress', period:1, due:addDays(-2), content:{summary:'สกัดสารจากสมุนไพร 12 ชนิด พบ 3 ชนิดที่ยับยั้ง MRSA ได้ที่ความเข้มข้นต่ำกว่า 64 µg/mL อยู่ระหว่างแยกสารบริสุทธิ์', progress:55}}, -4, [[-4,'ดร.อรุณี แสงทอง','ส่งรายงาน']]);
+  raw('report', 'P3', 'Draft', {rtype:'final', due:addDays(195)}, -190, []);
+  raw('advance', 'P3', 'ClearingSubmitted', {cat:'ค่าวัสดุ', amount:28000, desc:'สารเคมีและอาหารเลี้ยงเชื้อ', clearDue:addDays(6), actual:26450, files:['ใบเสร็จ-สารเคมี.pdf','ใบกำกับภาษี.pdf']}, -1, [[-25,'ดร.อรุณี แสงทอง','ส่งคำขอยืมเงิน'],[-22,'ประเสริฐ บุญมา','จ่ายเงินยืมแล้ว'],[-1,'ดร.อรุณี แสงทอง','ส่งล้างหนี้']]);
+
+  const p4 = mk({id:'P4', code:'RMS-2568-052', title:'ระบบติดตามผู้ป่วยเบาหวานทางไกลผ่านแอปพลิเคชันบนมือถือ', pi:'รศ.ดร.ปกรณ์ มั่นคง', faculty:'คณะแพทยศาสตร์', funder:'F1',
+    start:addDays(-400), end:addDays(-35), total:300000, status:'closing', contractNo:'วจ.052/2568',
+    budget:B({'ค่าตอบแทน':[50000,50000], 'ค่าจ้าง':[120000,118000], 'ค่าใช้สอย':[80000,71500], 'ค่าครุภัณฑ์':[50000,48000]}),
+    installments:[{seq:1, amount:150000, condition:'contract', status:'paid'}, {seq:2, amount:100000, condition:'report:1', status:'paid'}, {seq:3, amount:50000, condition:'final', status:'paid'}]});
+  raw('contract', 'P4', 'Active', {}, -395, []);
+  raw('report', 'P4', 'Accepted', {rtype:'final', due:addDays(-5)}, -8, [[-20,'รศ.ดร.ปกรณ์ มั่นคง','ส่งรายงาน'],[-8,'ระบบ','รายงานผ่าน']]);
+  raw('closeout', 'P4', 'Checklist', {}, -8, [[-8,'ระบบ','ระบบเปิดรายการปิดโครงการอัตโนมัติ']]);
+
+  const p5 = mk({id:'P5', code:'RMS-2569-020', title:'การประเมินคาร์บอนฟุตพริ้นท์ของห่วงโซ่อุปทานข้าวอินทรีย์', pi:'ดร.อรุณี แสงทอง', faculty:'คณะวิทยาศาสตร์', funder:'F1',
+    start:addDays(7), end:addDays(372), total:350000, status:'contracting', contractNo:'วจ.020/2569',
+    budget:B({'ค่าตอบแทน':[50000], 'ค่าจ้าง':[150000], 'ค่าใช้สอย':[150000]}),
+    installments:[{seq:1, amount:175000, condition:'contract', status:'pending'}, {seq:2, amount:175000, condition:'final', status:'pending'}]});
+  raw('contract', 'P5', 'PendingApprover', {}, -2, [[-6,'ระบบ','สร้างสัญญาจาก template อัตโนมัติ'],[-5,'ดร.อรุณี แสงทอง','ลงนามอิเล็กทรอนิกส์'],[-2,'รศ.ดร.วิภาวี ศรีสุข','อนุมัติ ส่งผู้มีอำนาจ']]);
+
+  mk({id:'P6', code:'RMS-2567-031', title:'เซนเซอร์วัดความชื้นดินต้นทุนต่ำสำหรับสวนทุเรียน', pi:'อ.ดร.ณัฐพล เรืองศรี', faculty:'คณะวิศวกรรมศาสตร์', funder:'F1',
+    start:addDays(-700), end:addDays(-335), total:250000, status:'closed', contractNo:'วจ.031/2567',
+    budget:B({'ค่าวัสดุ':[150000,149200], 'ค่าใช้สอย':[100000,93800]}),
+    installments:[{seq:1, amount:150000, condition:'contract', status:'paid'}, {seq:2, amount:100000, condition:'final', status:'paid'}],
+    followUp:{due:addDays(30), label:'บทความตีพิมพ์ในวารสารระดับชาติขึ้นไป 1 เรื่อง'}});
+  raw('contract', 'P6', 'Closed', {}, -300, []);
+  raw('closeout', 'P6', 'Closed', {refundSettled:true, refundAmount:7000}, -300, []);
+  save();
+}
+
+/* ---------- rendering ---------- */
+let R = {view:'inbox'};
+const $ = id => document.getElementById(id);
+const pill = (txt, tone) => `<span class="pill ${tone || ''}">${esc(txt)}</span>`;
+const PSTATUS = {contracting:['ทำสัญญา','wait'], active:['ดำเนินการ','ok'], closing:['กำลังปิด','warn'], closed:['ปิดแล้ว','']};
+const navBtn = (view, label, extra) => `<button type="button" data-nav="${view}" ${R.view === view || (view === 'projects' && R.view === 'project') ? 'aria-current="page"' : ''}><span>${label}</span>${extra || ''}</button>`;
+
+function go(view, args){ R = Object.assign({view}, args || {}); render(); window.scrollTo(0, 0); }
+function toast(msg){ document.querySelectorAll('.toast').forEach(x => x.remove()); const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2600); }
+
+function renderChrome(){
+  $('role').innerHTML = Object.entries(ROLES).map(([k, r]) => `<option value="${k}" ${k === S.role ? 'selected' : ''}>${esc(r.label)}</option>`).join('');
+  const r = ROLES[S.role];
+  $('person').innerHTML = `${esc(r.name)}<small>${esc(r.sub)}</small>`;
+  const n = tasksFor(S.role).length;
+  let h = '';
+  if (S.role !== 'EXEC') h += navBtn('inbox', 'งานรอดำเนินการ', n ? `<span class="count">${n}</span>` : '');
+  if (S.role !== 'REVIEWER') h += navBtn('projects', S.role === 'PI' ? 'โครงการของฉัน' : 'โครงการ');
+  if (['EXEC','RO','APPROVER'].includes(S.role)) h += navBtn('dashboard', 'แดชบอร์ด');
+  if (S.role === 'RO') h += '<div class="sep"></div>' + navBtn('import', 'นำเข้าโครงการ') + navBtn('funders', 'ตั้งค่าแหล่งทุน');
+  h += `<div class="foot">ข้อมูลทั้งหมดเป็นตัวอย่างสมมติ · เก็บในเบราว์เซอร์นี้เท่านั้น</div>`;
+  $('nav').innerHTML = h;
+}
+
+function render(){
+  if (S.role === 'EXEC' && R.view === 'inbox') R = {view:'dashboard'};
+  if (S.role === 'REVIEWER' && R.view === 'projects') R = {view:'inbox'};
+  renderChrome();
+  const v = {inbox:vInbox, projects:vProjects, project:vProject, item:vItem, import:vImport, funders:vFunders, dashboard:vDashboard}[R.view] || vInbox;
+  $('main').innerHTML = v();
+  bindView();
+}
+
+function taskRows(tasks, batchable){
+  if (!tasks.length) return `<div class="empty">ไม่มีงานรอดำเนินการ</div>`;
+  return `<div class="tablewrap"><table><thead><tr>${batchable ? '<th></th>' : ''}<th>เรื่อง</th><th>สถานะ</th><th class="r">จำนวนเงิน (บาท)</th><th>ระยะเวลา</th></tr></thead><tbody>
+  ${tasks.map(it => { const p = P(it.projectId), a = age(it), st = stOf(it), canBatch = batchable && st.batch;
+    return `<tr class="click" tabindex="0" data-open="${it.id}">${batchable ? `<td>${canBatch ? `<input type="checkbox" class="bsel" value="${it.id}" aria-label="เลือก ${esc(itemTitle(it))}">` : ''}</td>` : ''}
+      <td><div class="t-title">${esc(itemTitle(it))}</div><div class="t-sub"><span class="mono">${esc(p.code)}</span> · ${esc(p.title)}</div></td>
+      <td>${pill(st.label, st.tone)}</td>
+      <td class="r num">${itemAmount(it) != null ? baht(itemAmount(it)) : '—'}</td>
+      <td>${pill(a.txt, a.tone)}</td></tr>`; }).join('')}
+  </tbody></table></div>`;
+}
+
+function vInbox(){
+  const tasks = tasksFor(S.role).sort((a, b) => (age(b).over ? 1 : 0) - (age(a).over ? 1 : 0));
+  const batchable = ['FAC','APPROVER'].includes(S.role) && tasks.some(t => stOf(t).batch);
+  const over = tasks.filter(t => age(t).over).length;
+  let extra = '';
+  if (S.role === 'PI'){
+    const mine = S.projects.filter(visible);
+    const obl = mine.flatMap(p => obligations(p).map(o => ({p, o})));
+    extra = `${obl.length ? `<div class="notice bad"><span>⚠</span><div><b>มีภาระค้าง</b> ซึ่งจะทำให้คำขอเบิกงวดถัดไปไม่ผ่านการตรวจอัตโนมัติ<br>${obl.map(x => esc(x.p.code + ': ' + x.o)).join('<br>')}</div></div>` : ''}
+    <section class="panel"><div class="panel-head"><h2>โครงการของฉัน</h2></div>${projectTable(mine)}</section>`;
+  }
+  if (S.role === 'RO'){
+    const exc = tasks.filter(t => t.type === 'disbursement').length;
+    extra = `<div class="notice info"><span>ℹ</span><div>กองวิจัยเห็นเฉพาะเรื่องที่ <b>ระบบตรวจแล้วไม่ผ่านกฎ</b> และงานที่ต้องใช้วิจารณญาณ คำขอที่ผ่านกฎจะส่งต่อการเงินอัตโนมัติ${exc ? '' : ' (ตอนนี้ไม่มีข้อยกเว้น)'}</div></div>`;
+  }
+  return `<div class="pagehead"><h1>งานรอดำเนินการ</h1>
+    <p class="muted">${tasks.length} เรื่องรอ${esc(ROLES[S.role].name)}${over ? ` · <span style="color:var(--bad)">${over} เรื่องเกินกำหนด</span>` : ''}</p></div>
+  <section class="panel">
+    ${batchable ? `<div class="btns"><button class="btn primary sm" id="batch" type="button">อนุมัติเรื่องที่เลือก</button><span class="hint muted">อนุมัติได้หลายเรื่องพร้อมกัน ระบบบันทึกแยกรายเรื่อง</span></div>` : ''}
+    ${taskRows(tasks, batchable)}
+  </section>${extra}`;
+}
+
+function projectTable(list){
+  if (!list.length) return `<div class="empty">ไม่มีโครงการ</div>`;
+  return `<div class="tablewrap"><table><thead><tr><th>โครงการ</th><th>แหล่งทุน</th><th>สถานะ</th><th class="r">งบ (บาท)</th><th>ใช้จ่ายแล้ว</th></tr></thead><tbody>
+  ${list.map(p => { const t = totals(p), o = obligations(p), s = PSTATUS[p.status];
+    return `<tr class="click" tabindex="0" data-project="${p.id}"><td><div class="t-title">${esc(p.title)}</div><div class="t-sub"><span class="mono">${esc(p.code)}</span> · ${esc(p.pi)} · ${esc(p.faculty)}</div></td>
+      <td class="small">${esc(FUNDERS[p.funder].name)}</td>
+      <td>${pill(s[0], s[1])}${o.length ? ' ' + pill('ค้างภาระ', 'bad') : ''}</td>
+      <td class="r num">${baht(p.total)}</td>
+      <td style="min-width:120px"><div class="bar"><i class="a" style="width:${pct(t.actual, t.planned)}%"></i><i class="c" style="width:${pct(t.committed, t.planned)}%"></i></div><span class="small muted num">${pct(t.actual, t.planned)}%</span></td></tr>`; }).join('')}
+  </tbody></table></div>`;
+}
+
+function vProjects(){
+  const list = S.projects.filter(visible);
+  return `<div class="pagehead"><h1>${S.role === 'PI' ? 'โครงการของฉัน' : 'โครงการ'}</h1><p class="muted">${list.length} โครงการ${S.role === 'FAC' ? ' ใน' + esc(ROLES.FAC.faculty) : ''}</p></div>
+  <section class="panel">${projectTable(list)}<div class="legend"><span style="--sw:var(--accent)">ใช้จริง</span><span style="--sw:var(--warn)">ผูกพัน</span></div></section>`;
+}
+
+function vProject(){
+  const p = P(R.id); if (!p) return vProjects();
+  const tab = R.tab || 'overview', s = PSTATUS[p.status], f = FUNDERS[p.funder];
+  const tabs = [['overview','ภาพรวม'],['budget','งบประมาณและการใช้จ่าย'],['install','งวดเงิน'],['reports','รายงานและผลผลิต'],['history','ประวัติ']];
+  const body = {overview:pOverview, budget:pBudget, install:pInstall, reports:pReports, history:pHistory}[tab](p);
+  return `<div class="crumb"><button type="button" data-nav="projects">โครงการ</button><span>/</span><span class="mono">${esc(p.code)}</span></div>
+  <div class="pagehead"><h1>${esc(p.title)}</h1>
+    <div class="meta"><span>${pill(s[0], s[1])}</span><span>หัวหน้าโครงการ <b>${esc(p.pi)}</b></span><span>${esc(p.faculty)}</span><span>${esc(f.name)}</span>
+    <span>ระยะเวลา <b>${fmtDate(p.start)} – ${fmtDate(p.end)}</b></span><span>วงเงิน <b class="num">${baht(p.total)}</b> บาท</span></div></div>
+  <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" aria-selected="${k === tab}" data-tab="${k}">${l}</button>`).join('')}</div>
+  ${body}`;
+}
+
+function pOverview(p){
+  const c = itemsOf(p.id, 'contract')[0], co = itemsOf(p.id, 'closeout')[0];
+  const open = itemsOf(p.id).filter(i => !stOf(i).final && i.type !== 'contract' && !(i.type === 'report' && i.state === 'Draft' && diffDays(today(), i.data.due) > 30));
+  const o = obligations(p), t = totals(p), f = FUNDERS[p.funder];
+  return `${o.length ? `<div class="notice bad"><span>⚠</span><div><b>ค้างภาระ:</b> ${o.map(esc).join(' · ')}</div></div>` : ''}
+  <div class="split">
+    <section class="panel"><div class="panel-head"><h2>เรื่องที่กำลังดำเนินการ</h2></div>
+      ${open.length ? `<div class="tablewrap"><table><tbody>${open.map(it => { const a = age(it); return `<tr class="click" tabindex="0" data-open="${it.id}"><td><div class="t-title">${esc(itemTitle(it))}</div><div class="t-sub">ผู้ถือเรื่อง: ${esc(stOf(it).role ? ROLES[stOf(it).role].label : 'ระบบ')}</div></td><td>${pill(stOf(it).label, stOf(it).tone)}</td><td>${pill(a.txt, a.tone)}</td></tr>`; }).join('')}</tbody></table></div>` : `<div class="empty">ไม่มีเรื่องค้าง</div>`}
+    </section>
+    <div style="display:flex;flex-direction:column;gap:1rem;min-width:0">
+      <section class="panel"><div class="panel-head"><h2>สัญญา</h2>${c ? pill(stOf(c).label, stOf(c).tone) : ''}</div>
+        <dl class="dl"><dt>เลขที่</dt><dd class="mono">${esc(p.contractNo)}</dd><dt>แบบสัญญา</dt><dd>${esc(f.template)}</dd></dl>
+        <div class="btns"><button class="btn sm" type="button" data-contract="${p.id}">ดูสัญญา</button>${c ? `<button class="btn sm" type="button" data-open="${c.id}">ขั้นตอนการลงนาม</button>` : ''}</div></section>
+      <section class="panel"><div class="panel-head"><h2>การเงิน</h2></div>
+        <dl class="dl"><dt>รับเงินงวดแล้ว</dt><dd class="num">${baht(received(p))} บาท</dd><dt>ใช้จริง</dt><dd class="num">${baht(t.actual)} บาท</dd><dt>ผูกพัน</dt><dd class="num">${baht(t.committed)} บาท</dd><dt>คงเหลือตามแผน</dt><dd class="num">${baht(t.planned - t.actual - t.committed)} บาท</dd></dl></section>
+      ${co ? `<section class="panel"><div class="panel-head"><h2>ปิดโครงการ</h2>${pill(stOf(co).label, stOf(co).tone)}</div>${checklist(closeChecks(p))}<div class="btns"><button class="btn sm" type="button" data-open="${co.id}">เปิดรายการปิดโครงการ</button></div></section>` : ''}
+      ${p.followUp ? `<section class="panel"><h2>ติดตามผลผลิตหลังปิด</h2><p class="small">${esc(p.followUp.label)}</p><p class="small muted">กำหนด ${fmtDate(p.followUp.due)} · ระบบเตือนอัตโนมัติ</p></section>` : ''}
+    </div>
+  </div>`;
+}
+const checklist = cs => `<ul class="checklist">${cs.map(c => `<li class="${c.ok ? 'y' : 'n'}"><span class="mk">${c.ok ? '✓' : '✕'}</span><span>${esc(c.label)}</span></li>`).join('')}</ul>`;
+
+function pBudget(p){
+  const l = ledger(p), t = totals(p), f = FUNDERS[p.funder];
+  const exps = S.items.filter(i => i.projectId === p.id && (i.type === 'advance' || i.type === 'procurement'));
+  const canReq = S.role === 'PI' && p.pi === ROLES.PI.name && p.status === 'active';
+  return `<section class="panel"><div class="panel-head"><h2>งบประมาณตามหมวด</h2><span class="small muted">ยอดใช้จริงเฟส 1.5 ดึงจาก SAP</span></div>
+    <div class="tablewrap"><table><thead><tr><th>หมวด</th><th class="r">งบตามแผน</th><th class="r">ผูกพัน</th><th class="r">ใช้จริง</th><th class="r">คงเหลือ</th><th></th></tr></thead><tbody>
+    ${l.map(x => `<tr><td>${esc(x.cat)}</td><td class="r num">${baht(x.planned)}</td><td class="r num">${baht(x.committed)}</td><td class="r num">${baht(x.actual)}</td><td class="r num"><b>${baht(x.remaining)}</b></td>
+      <td style="min-width:110px"><div class="bar"><i class="a" style="width:${pct(x.actual, x.planned)}%"></i><i class="c" style="width:${pct(x.committed, x.planned)}%"></i></div></td></tr>`).join('')}
+    <tr><td><b>รวม</b></td><td class="r num"><b>${baht(t.planned)}</b></td><td class="r num">${baht(t.committed)}</td><td class="r num">${baht(t.actual)}</td><td class="r num"><b>${baht(t.planned - t.committed - t.actual)}</b></td><td></td></tr>
+    </tbody></table></div><div class="legend"><span style="--sw:var(--accent)">ใช้จริง</span><span style="--sw:var(--warn)">ผูกพัน</span></div></section>
+  ${canReq ? `<section class="panel"><h2>ขอใช้จ่าย</h2>
+    <form id="expform" class="fields" novalidate>
+      <div class="field"><label for="e-type">ประเภท</label><select id="e-type"><option value="advance">ยืมเงินทดรอง</option><option value="procurement">จัดซื้อจัดจ้าง</option></select></div>
+      <div class="field"><label for="e-cat">หมวดงบ</label><select id="e-cat">${l.map(x => `<option>${esc(x.cat)}</option>`).join('')}</select></div>
+      <div class="field"><label for="e-amt">จำนวนเงิน (บาท)</label><input id="e-amt" type="number" min="1" value="10000"></div>
+      <div class="field" style="grid-column:1/-1"><label for="e-desc">รายละเอียด</label><input id="e-desc" value="ค่าวิเคราะห์ตัวอย่างด้วยเครื่อง ICP-OES"></div>
+    </form>
+    <p class="hint" id="e-check"></p>
+    <div class="btns"><button class="btn primary" type="button" id="e-submit">ส่งคำขอ (ผ่านคณะ)</button><span class="hint muted">ยืมเงินต้องล้างหนี้ภายใน ${f.advanceDays} วันหลังได้รับเงิน</span></div></section>` : ''}
+  <section class="panel"><h2>รายการใช้จ่าย</h2>
+    ${exps.length ? `<div class="tablewrap"><table><thead><tr><th>รายการ</th><th>หมวด</th><th class="r">ยอด (บาท)</th><th>สถานะ</th></tr></thead><tbody>
+    ${exps.map(e => `<tr class="click" tabindex="0" data-open="${e.id}"><td><div class="t-title">${esc(e.data.desc)}</div><div class="t-sub">${esc(WF[e.type].label)}${e.type === 'advance' && e.data.clearDue ? ' · ล้างหนี้ภายใน ' + fmtDate(e.data.clearDue) : ''}</div></td><td class="small">${esc(e.data.cat)}</td><td class="r num">${baht(e.data.actual ?? e.data.amount)}</td><td>${pill(stOf(e).label, advanceOverdue(e) ? 'bad' : stOf(e).tone)}</td></tr>`).join('')}
+    </tbody></table></div>` : `<div class="empty">ยังไม่มีรายการ</div>`}</section>`;
+}
+
+function pInstall(p){
+  return `<section class="panel"><div class="panel-head"><h2>งวดเงิน</h2><span class="small muted">คำขอเบิกสร้างอัตโนมัติเมื่อเงื่อนไขครบ</span></div>
+  <div class="tablewrap"><table><thead><tr><th>งวด</th><th class="r">จำนวนเงิน (บาท)</th><th>เงื่อนไข</th><th>สถานะ</th></tr></thead><tbody>
+  ${p.installments.map(i => { const req = itemsOf(p.id, 'disbursement').find(d => d.data.seq === i.seq);
+    const st = i.status === 'paid' ? pill('โอนแล้ว' + (i.paidAt ? ' ' + fmtDate(i.paidAt) : ''), 'ok') : req ? pill(stOf(req).label, stOf(req).tone) : pill('รอเงื่อนไข', '');
+    return `<tr ${req ? `class="click" tabindex="0" data-open="${req.id}"` : ''}><td class="num">${i.seq}</td><td class="r num">${baht(i.amount)}</td><td class="small">${esc(COND(i.condition))}</td><td>${st}</td></tr>`; }).join('')}
+  </tbody></table></div></section>`;
+}
+
+function pReports(p){
+  const reps = itemsOf(p.id, 'report');
+  const outs = reps.flatMap(r => (r.data.outputs || []).map(o => ({...o, r})));
+  return `<section class="panel"><h2>รายงาน</h2>
+  <div class="tablewrap"><table><thead><tr><th>รายงาน</th><th>กำหนดส่ง</th><th>สถานะ</th></tr></thead><tbody>
+  ${reps.map(r => `<tr class="click" tabindex="0" data-open="${r.id}"><td class="t-title">${esc(itemTitle(r))}</td><td class="num small">${fmtDate(r.data.due)}</td><td>${pill(stOf(r).label, reportOverdue(r) ? 'bad' : stOf(r).tone)}</td></tr>`).join('')}
+  </tbody></table></div></section>
+  <section class="panel"><div class="panel-head"><h2>ผลผลิต</h2><span class="small muted">ตามสัญญา: ${esc(FUNDERS[p.funder].outputs)}</span></div>
+  ${outs.length ? `<ul class="checklist">${outs.map(o => `<li class="y"><span class="mk">✓</span><span><b>${esc(o.type)}</b> · ${esc(o.title)} <span class="muted small">(${esc(itemTitle(o.r))})</span></span></li>`).join('')}</ul>` : `<div class="empty">ยังไม่มีผลผลิตที่บันทึก · นักวิจัยบันทึกผลผลิตได้ในแบบรายงาน</div>`}</section>`;
+}
+
+function pHistory(p){
+  const ev = itemsOf(p.id).flatMap(it => it.history.map(h => ({...h, it}))).sort((a, b) => b.at.localeCompare(a.at));
+  return `<section class="panel"><div class="panel-head"><h2>ประวัติการดำเนินการ (audit trail)</h2><span class="small muted">บันทึกทุกการกระทำ แก้ไขหรือลบไม่ได้</span></div>
+  <ul class="timeline">${ev.map(h => `<li><span class="when num">${fmtTime(h.at)}</span><span><span class="${h.sys ? 'sys' : ''}">${esc(h.who)}</span> · ${esc(h.action)} <span class="muted">— ${esc(itemTitle(h.it))}</span>${h.note ? `<br><span class="small muted">${esc(h.note)}</span>` : ''}</span></li>`).join('')}</ul></section>`;
+}
+
+function vItem(){
+  const it = I(R.id); if (!it) return vInbox();
+  const p = P(it.projectId), st = stOf(it), a = age(it), d = it.data;
+  const mine = st.role === S.role && !st.final && (S.role !== 'PI' || p.pi === ROLES.PI.name) && (S.role !== 'FAC' || p.faculty === ROLES.FAC.faculty);
+  let info = '';
+  if (it.type === 'disbursement'){
+    info = `<dl class="dl"><dt>งวดที่</dt><dd class="num">${d.seq}</dd><dt>จำนวนเงิน</dt><dd class="num">${baht(d.amount)} บาท</dd><dt>เงื่อนไข</dt><dd>${esc(COND(p.installments.find(i => i.seq === d.seq).condition))}</dd>${d.sapDoc ? `<dt>เอกสาร SAP</dt><dd class="mono">${esc(d.sapDoc)}</dd>` : ''}</dl>`;
+    const rules = d.rules || (it.state === 'PendingPI' || it.state === 'PendingFaculty' ? runRules(it) : null);
+    if (rules) info += `<h3>${d.rules ? 'ผลการตรวจเงื่อนไขอัตโนมัติ' : 'ตรวจเงื่อนไขล่วงหน้า (ระบบจะตรวจอีกครั้งหลังคณะอนุมัติ)'}</h3>${checklist(rules.map(r => ({label:r.label, ok:r.ok})))}`;
+  } else if (it.type === 'advance' || it.type === 'procurement'){
+    info = `<dl class="dl"><dt>รายละเอียด</dt><dd>${esc(d.desc)}</dd><dt>หมวดงบ</dt><dd>${esc(d.cat)}</dd><dt>ยอดขอ</dt><dd class="num">${baht(d.amount)} บาท</dd>
+      ${d.clearDue ? `<dt>กำหนดล้างหนี้</dt><dd>${fmtDate(d.clearDue)}${advanceOverdue(it) ? ' ' + pill('เลยกำหนด', 'bad') : ''}</dd>` : ''}
+      ${d.actual != null ? `<dt>ยอดใช้จริง</dt><dd class="num">${baht(d.actual)} บาท${d.amount - d.actual > 0 && it.type === 'advance' ? ` <span class="muted">(คืน ${baht(d.amount - d.actual)})</span>` : ''}</dd>` : ''}
+      ${d.files ? `<dt>หลักฐาน</dt><dd>${d.files.map(f => `<span class="tag">${esc(f)}</span>`).join(' ')}</dd>` : ''}</dl>`;
+    if (it.state === 'PendingFaculty'){ const line = ledger(p).find(x => x.cat === d.cat); info += `<div class="notice ok">ผ่านการตรวจงบ · หมวด${esc(d.cat)} คงเหลือ <b class="num">${baht(line ? line.remaining : 0)}</b> บาท ก่อนตั้งผูกพันรายการนี้</div>`; }
+  } else if (it.type === 'report'){
+    const c = d.content;
+    info = `<dl class="dl"><dt>กำหนดส่ง</dt><dd>${fmtDate(d.due)}</dd><dt>แบบฟอร์ม</dt><dd>${esc(FUNDERS[p.funder].reportForm)}</dd><dt>ผู้ทรงคุณวุฒิ</dt><dd>${FUNDERS[p.funder].requiresReview ? 'ต้องประเมิน' : 'ไม่ต้อง (ตามกติกาแหล่งทุน)'}</dd>${d.score ? `<dt>ผลประเมิน</dt><dd class="num">${d.score}/5</dd>` : ''}</dl>
+      ${c ? `<h3>เนื้อหารายงาน</h3><p>${esc(c.summary)}</p><p class="small muted">ความก้าวหน้า <span class="num">${c.progress}%</span></p>` : ''}`;
+  } else if (it.type === 'contract'){
+    info = `<dl class="dl"><dt>เลขที่สัญญา</dt><dd class="mono">${esc(p.contractNo)}</dd><dt>แบบสัญญา</dt><dd>${esc(FUNDERS[p.funder].template)}</dd><dt>ลำดับการลงนาม</dt><dd>นักวิจัย → คณะ → ผู้มีอำนาจ</dd></dl>
+      <div class="btns"><button class="btn sm" type="button" data-contract="${p.id}">ดูสัญญา (สร้างจาก template)</button></div>`;
+  } else if (it.type === 'closeout'){
+    info = `${checklist(closeChecks(p))}<dl class="dl"><dt>รับเงินงวด</dt><dd class="num">${baht(received(p))} บาท</dd><dt>ใช้จริง</dt><dd class="num">${baht(totals(p).actual)} บาท</dd><dt>เงินเหลือจ่ายต้องคืน</dt><dd class="num"><b>${baht(refundDue(p))}</b> บาท</dd>${d.refundSettled ? `<dt>คืนแล้ว</dt><dd class="num">${baht(d.refundAmount)} บาท</dd>` : ''}<dt>กติกาคืนเงิน</dt><dd>${esc(FUNDERS[p.funder].refundRule)}</dd></dl>`;
+  }
+  let actions = '';
+  if (mine && st.actions){
+    actions = `<section class="panel" id="actpanel"><h2>ดำเนินการ</h2>
+      ${st.form ? st.form(it) : ''}
+      <div class="field"><label for="f-reason">ความเห็น / เหตุผล ${st.actions.some(x => x.reason) ? '(จำเป็นสำหรับการส่งกลับหรือไม่อนุมัติ)' : '(ถ้ามี)'}</label><textarea id="f-reason" style="min-height:3.5rem"></textarea></div>
+      <p class="hint bad" id="f-err" hidden></p>
+      <div class="btns">${st.actions.map(x => { const en = x.enabled ? x.enabled(it) : true;
+        return `<button class="btn ${x.kind || ''}" type="button" data-act="${x.id}" ${en === true ? '' : `disabled title="${esc(en)}"`}>${esc(x.label)}</button>`; }).join('')}</div>
+      ${st.actions.filter(x => x.enabled && x.enabled(it) !== true).map(x => `<p class="hint muted">${esc(x.label)}: ${esc(x.enabled(it))}</p>`).join('')}
+    </section>`;
+  } else if (!st.final){
+    actions = `<div class="notice info">เรื่องนี้รอ <b>${esc(st.role ? ROLES[st.role].label : 'ระบบ')}</b> ดำเนินการ · สลับบทบาทที่มุมขวาบนเพื่อทำขั้นถัดไป</div>`;
+  }
+  return `<div class="crumb"><button type="button" data-nav="${S.role === 'REVIEWER' ? 'inbox' : 'projects'}">${S.role === 'REVIEWER' ? 'งานรอดำเนินการ' : 'โครงการ'}</button><span>/</span>${S.role === 'REVIEWER' ? `<span class="mono">${esc(p.code)}</span>` : `<button type="button" data-project="${p.id}" class="mono">${esc(p.code)}</button>`}<span>/</span><span>${esc(itemTitle(it))}</span></div>
+  <div class="pagehead"><h1>${esc(itemTitle(it))}</h1><div class="meta"><span>${pill(st.label, st.tone)}</span>${st.final ? '' : `<span>${pill(a.txt, a.tone)}</span>`}<span>${esc(p.title)}</span></div></div>
+  <div class="split">
+    <div style="display:flex;flex-direction:column;gap:1rem;min-width:0"><section class="panel">${info}</section>${actions}</div>
+    <section class="panel"><h2>ประวัติ</h2><ul class="timeline">${[...it.history].reverse().map(h => `<li><span class="when num">${fmtTime(h.at)}</span><span><span class="${h.sys ? 'sys' : ''}">${esc(h.who)}</span> · ${esc(h.action)}${h.note ? `<br><span class="small muted">${esc(h.note)}</span>` : ''}</span></li>`).join('')}</ul></section>
+  </div>`;
+}
+
+function vImport(){
+  const f = FUNDERS.F1;
+  return `<div class="pagehead"><h1>นำเข้าโครงการที่อนุมัติแล้ว</h1><p class="muted">ระบบจริงนำเข้าจากไฟล์ Excel template หรือ API ได้ ฟอร์มนี้จำลองการนำเข้า 1 โครงการ</p></div>
+  <section class="panel"><form id="impform" class="fields" novalidate>
+    <div class="field" style="grid-column:1/-1"><label for="i-title">ชื่อโครงการ</label><input id="i-title" value="การใช้โดรนสำรวจโรคใบไหม้ในนาข้าวด้วยภาพหลายช่วงคลื่น"></div>
+    <div class="field"><label for="i-pi">หัวหน้าโครงการ</label><select id="i-pi">${PEOPLE.map(x => `<option>${esc(x.name)}</option>`).join('')}</select></div>
+    <div class="field"><label for="i-funder">แหล่งทุน</label><select id="i-funder">${Object.values(FUNDERS).map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></div>
+    <div class="field"><label for="i-start">วันเริ่ม</label><input id="i-start" type="date" value="${addDays(14)}"></div>
+    <div class="field"><label for="i-months">ระยะเวลา (เดือน)</label><input id="i-months" type="number" min="3" max="60" value="12"></div>
+    ${f.categories.map((c, k) => `<div class="field"><label for="i-c${k}">${esc(c)} (บาท)</label><input id="i-c${k}" type="number" min="0" value="${[40000,120000,90000,60000,0][k]}"></div>`).join('')}
+    <div class="field"><label for="i-inst">การแบ่งงวด</label><select id="i-inst"><option value="40,40,20">3 งวด: 40 / 40 / 20</option><option value="50,50">2 งวด: 50 / 50</option><option value="30,30,30,10">4 งวด: 30 / 30 / 30 / 10</option></select></div>
+  </form>
+  <div class="btns"><button class="btn primary" type="button" id="i-submit">นำเข้าและสร้างสัญญาอัตโนมัติ</button><span class="hint muted">สัญญาแบบมาตรฐานส่งให้นักวิจัยลงนามทันที · สัญญาทุนภายนอกส่งนิติการก่อน</span></div></section>`;
+}
+
+function vFunders(){
+  return `<div class="pagehead"><h1>ตั้งค่าแหล่งทุน</h1><p class="muted">กติกาของแต่ละแหล่งทุนเก็บเป็นข้อมูล เพิ่มแหล่งทุนใหม่ได้โดยไม่ต้องแก้โปรแกรม (ต้นแบบนี้แสดงอย่างเดียว)</p></div>
+  <div class="grid2">${Object.values(FUNDERS).map(f => `<section class="panel"><div class="panel-head"><h2>${esc(f.name)}</h2><span class="tag">${esc(f.kind)}</span></div>
+    <dl class="dl"><dt>หมวดงบ</dt><dd>${f.categories.map(esc).join(', ')}</dd><dt>แบบสัญญา</dt><dd>${esc(f.template)}</dd><dt>แบบรายงาน</dt><dd>${esc(f.reportForm)}</dd>
+    <dt>ผู้ทรงคุณวุฒิ</dt><dd>${f.requiresReview ? 'ต้องประเมินทุกรายงาน' : 'ไม่ต้อง'}</dd><dt>ล้างหนี้เงินยืม</dt><dd>ภายใน ${f.advanceDays} วัน</dd>
+    <dt>ปรับงบระหว่างหมวด</dt><dd>≤ ${f.budgetShiftPct}% คณะ + กองวิจัยอนุมัติจบ · เกินต้องถึงผู้มีอำนาจ${f.kind === 'ทุนภายนอก' ? ' และแหล่งทุน' : ''}</dd>
+    <dt>คืนเงิน</dt><dd>${esc(f.refundRule)}</dd><dt>ผลผลิตผูกพัน</dt><dd>${esc(f.outputs)}</dd><dt>รูปแบบ export</dt><dd>${esc(f.export)}</dd></dl></section>`).join('')}</div>`;
+}
+
+function vDashboard(){
+  const ps = S.projects, act = ps.filter(p => p.status === 'active' || p.status === 'closing');
+  const tot = sum(act, p => p.total), rec = sum(act, p => received(p)), actual = sum(act, p => totals(p).actual);
+  const open = S.items.filter(i => !stOf(i).final && stOf(i).role && P(i.projectId).status !== 'closed' && !(i.type === 'report' && i.state === 'Draft' && !reportOverdue(i)) && !(i.type === 'advance' && i.state === 'Disbursed' && !advanceOverdue(i)));
+  const over = open.filter(i => age(i).over);
+  const byFac = [...new Set(ps.map(p => p.faculty))].map(f => { const l = ps.filter(p => p.faculty === f);
+    return {f, n:l.filter(p => p.status !== 'closed').length, total:sum(l, p => p.total), actual:sum(l, p => totals(p).actual), planned:sum(l, p => totals(p).planned), obl:l.filter(p => obligations(p).length).length}; });
+  const byRole = Object.keys(ROLES).map(r => ({r, n:open.filter(i => stOf(i).role === r).length, o:over.filter(i => stOf(i).role === r).length})).filter(x => x.n);
+  const risks = ps.flatMap(p => obligations(p).map(o => ({p, o})));
+  return `<div class="pagehead"><h1>แดชบอร์ดภาพรวมทุนวิจัย</h1><p class="muted">ข้อมูล ณ ${fmtDate(today())} · ตัวอย่างสมมติ</p></div>
+  <div class="kpis">
+    <div class="kpi"><span class="l">โครงการที่ดำเนินการ</span><span class="v">${act.length}</span><span class="l">จากทั้งหมด ${ps.length} โครงการ</span></div>
+    <div class="kpi"><span class="l">วงเงินโครงการที่ดำเนินการ</span><span class="v num">${(tot / 1e6).toFixed(2)}</span><span class="l">ล้านบาท</span></div>
+    <div class="kpi"><span class="l">เบิกงวดแล้ว</span><span class="v num">${pct(rec, tot)}%</span><span class="l">${baht(rec)} บาท</span></div>
+    <div class="kpi"><span class="l">ใช้จ่ายจริง</span><span class="v num">${pct(actual, tot)}%</span><span class="l">${baht(actual)} บาท</span></div>
+    <div class="kpi"><span class="l">เรื่องเกิน SLA</span><span class="v num" style="color:${over.length ? 'var(--bad)' : 'var(--ok)'}">${over.length}</span><span class="l">จาก ${open.length} เรื่องที่เปิดอยู่</span></div>
+  </div>
+  <div class="grid2">
+    <section class="panel"><h2>รายคณะ</h2><div class="tablewrap"><table><thead><tr><th>คณะ</th><th class="r">โครงการเปิด</th><th class="r">วงเงิน (บาท)</th><th>ใช้จ่าย</th><th class="r">ค้างภาระ</th></tr></thead><tbody>
+      ${byFac.map(x => `<tr><td>${esc(x.f)}</td><td class="r num">${x.n}</td><td class="r num">${baht(x.total)}</td><td style="min-width:100px"><div class="bar"><i class="a" style="width:${pct(x.actual, x.planned)}%"></i></div><span class="small muted num">${pct(x.actual, x.planned)}%</span></td><td class="r num">${x.obl ? `<span style="color:var(--bad)">${x.obl}</span>` : 0}</td></tr>`).join('')}
+    </tbody></table></div></section>
+    <section class="panel"><h2>เรื่องค้างตามผู้ถือเรื่อง</h2><div class="tablewrap"><table><thead><tr><th>ผู้ถือเรื่อง</th><th class="r">ค้าง</th><th class="r">เกิน SLA</th></tr></thead><tbody>
+      ${byRole.map(x => `<tr><td>${esc(ROLES[x.r].label)}</td><td class="r num">${x.n}</td><td class="r num">${x.o ? `<span style="color:var(--bad)">${x.o}</span>` : 0}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">ไม่มีเรื่องค้าง</td></tr>'}
+    </tbody></table></div><p class="hint muted">ใช้หาคอขวดของกระบวนการ (เช่น ขั้นที่คณะหรือผู้มีอำนาจ)</p></section>
+  </div>
+  <section class="panel"><h2>ความเสี่ยงที่ต้องติดตาม</h2>${risks.length ? `<ul class="checklist">${risks.map(x => `<li class="n"><span class="mk">!</span><span><span class="mono">${esc(x.p.code)}</span> ${esc(x.p.pi)} — ${esc(x.o)}</span></li>`).join('')}</ul>` : '<div class="empty">ไม่มี</div>'}</section>
+  <section class="panel">${projectTable(ps)}</section>`;
+}
+
+/* ---------- contract document (generated from template + merge fields) ---------- */
+function contractDoc(p){
+  const f = FUNDERS[p.funder], months = Math.round(diffDays(p.start, p.end) / 30.4);
+  const l = ledger(p);
+  return `<h3>สัญญารับทุนอุดหนุนการวิจัย</h3>เลขที่สัญญา ${esc(p.contractNo)}
+
+สัญญาฉบับนี้ทำขึ้นระหว่าง มหาวิทยาลัย โดย ${esc(ROLES.APPROVER.name)} ตำแหน่ง${esc(ROLES.APPROVER.sub)} ซึ่งต่อไปในสัญญานี้เรียกว่า "ผู้ให้ทุน" ฝ่ายหนึ่ง กับ ${esc(p.pi)} สังกัด${esc(p.faculty)} ซึ่งต่อไปในสัญญานี้เรียกว่า "ผู้รับทุน" อีกฝ่ายหนึ่ง
+
+ข้อ 1  ผู้ให้ทุนตกลงให้ทุนแก่ผู้รับทุนเพื่อดำเนินโครงการวิจัยเรื่อง "${esc(p.title)}" (รหัส ${esc(p.code)}) มีกำหนดระยะเวลา ${months} เดือน ตั้งแต่วันที่ ${fmtDate(p.start)} ถึงวันที่ ${fmtDate(p.end)}
+
+ข้อ 2  วงเงินทุนทั้งสิ้น ${baht(p.total)} บาท จำแนกตามหมวด ดังนี้
+${l.map(x => `      • ${esc(x.cat)}  ${baht(x.planned)} บาท`).join('\n')}
+
+ข้อ 3  ผู้ให้ทุนจะจ่ายเงินทุนแบ่งเป็น ${p.installments.length} งวด ดังนี้
+${p.installments.map(i => `      งวดที่ ${i.seq}  ${baht(i.amount)} บาท  ${esc(COND(i.condition))}`).join('\n')}
+
+ข้อ 4  ผู้รับทุนต้องส่งรายงานตาม${esc(f.reportForm)} ภายในกำหนดที่ระบบแจ้ง หากค้างส่ง ผู้ให้ทุนสงวนสิทธิ์ระงับการจ่ายเงินงวดถัดไป
+
+ข้อ 5  ผู้รับทุนต้องส่งผลผลิต: ${esc(f.outputs)}
+
+ข้อ 6  เงินเหลือจ่าย: ${esc(f.refundRule)}
+
+ข้อ 7  คู่สัญญาตกลงให้ลงนามด้วยลายมือชื่ออิเล็กทรอนิกส์ ตามพระราชบัญญัติว่าด้วยธุรกรรมทางอิเล็กทรอนิกส์ พ.ศ. 2544
+
+<span class="muted small">— เอกสารนี้สร้างจาก "${esc(f.template)}" โดยเติมข้อมูลจากทะเบียนโครงการอัตโนมัติ (ตัวอย่างประกอบต้นแบบ ไม่ใช่สัญญาจริง) —</span>`;
+}
+function openContract(pid){
+  const d = $('dlg'), p = P(pid);
+  d.innerHTML = `<div style="display:flex;flex-direction:column;gap:.8rem"><div class="panel-head"><h2>ร่างสัญญา ${esc(p.contractNo)}</h2><button class="btn sm" type="button" id="dlg-close">ปิด</button></div><div class="doc">${contractDoc(p)}</div></div>`;
+  d.showModal(); $('dlg-close').onclick = () => d.close();
+}
+
+/* ---------- events ---------- */
+function bindView(){
+  const m = $('main');
+  m.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => go('project', {id:R.id, tab:b.dataset.tab}));
+  const batch = $('batch');
+  if (batch) batch.onclick = () => {
+    const ids = [...m.querySelectorAll('.bsel:checked')].map(x => x.value);
+    if (!ids.length) return toast('เลือกอย่างน้อย 1 เรื่อง');
+    ids.forEach(id => { const it = I(id), st = stOf(it); const act = st.actions.find(a => a.id === st.batch); if (act) doAction(it, act, 'อนุมัติแบบกลุ่ม'); });
+    save(); render(); toast('อนุมัติแล้ว ' + ids.length + ' เรื่อง');
+  };
+  m.querySelectorAll('.bsel').forEach(c => c.onclick = e => e.stopPropagation());
+  if ($('actpanel')){
+    const it = I(R.id), st = stOf(it);
+    $('actpanel').querySelectorAll('[data-act]').forEach(b => b.onclick = () => {
+      const act = st.actions.find(a => a.id === b.dataset.act);
+      const reason = $('f-reason').value.trim(), err = $('f-err');
+      const fail = msg => { err.textContent = msg; err.hidden = false; };
+      if (act.reason && !reason) return fail('ระบุความเห็นหรือเหตุผลก่อน');
+      const c = st.collect ? st.collect(it, act) : {};
+      if (c.error) return fail(c.error);
+      if (c.output){ it.data.outputs = (it.data.outputs || []).concat([c.output]); }
+      doAction(it, act, reason, c.data);
+      save(); render(); toast(act.label + ' แล้ว');
+    });
+  }
+  if ($('expform')){
+    const p = P(R.id), f = FUNDERS[p.funder];
+    const check = () => { const cat = $('e-cat').value, amt = Number($('e-amt').value), line = ledger(p).find(x => x.cat === cat);
+      const ok = amt > 0 && line && amt <= line.remaining && $('e-desc').value.trim();
+      $('e-check').className = 'hint ' + (ok ? 'ok' : 'bad');
+      $('e-check').textContent = !line ? '' : amt > line.remaining ? `งบหมวด${cat} คงเหลือ ${baht(line.remaining)} บาท ไม่พอสำหรับ ${baht(amt)} บาท` : !(amt > 0) ? 'ระบุจำนวนเงิน' : !$('e-desc').value.trim() ? 'ระบุรายละเอียด' : `ผ่านการตรวจงบ · หมวด${cat} คงเหลือ ${baht(line.remaining)} บาท`;
+      $('e-submit').disabled = !ok; };
+    ['e-type','e-cat','e-amt','e-desc'].forEach(id => $(id).addEventListener('input', check)); check();
+    $('e-submit').onclick = () => {
+      const type = $('e-type').value, data = {cat:$('e-cat').value, amount:Number($('e-amt').value), desc:$('e-desc').value.trim()};
+      if (type === 'advance') data.clearDue = addDays(f.advanceDays + 3);
+      const it = createItem(type, p.id, 'PendingFaculty', data, 'ส่ง' + WF[type].label + ' (ผ่านการตรวจงบคงเหลือ)');
+      it.history[0].who = ROLES.PI.name; it.history[0].sys = false;
+      save(); go('item', {id:it.id}); toast('ส่งคำขอแล้ว รอคณะอนุมัติ');
+    };
+  }
+  if ($('i-submit')) $('i-submit').onclick = () => {
+    const fid = $('i-funder').value, f = FUNDERS[fid], pi = PEOPLE.find(x => x.name === $('i-pi').value);
+    const title = $('i-title').value.trim(); if (!title) return toast('ระบุชื่อโครงการ');
+    const budget = {}; f.categories.forEach((c, k) => { const v = Number($('i-c' + k).value) || 0; if (v > 0) budget[c] = {planned:v, actual:0}; });
+    const total = sum(Object.values(budget), b => b.planned); if (!total) return toast('ระบุงบอย่างน้อย 1 หมวด');
+    const split = $('i-inst').value.split(',').map(Number), start = $('i-start').value || addDays(14);
+    let acc = 0; const installments = split.map((s, k) => { const amt = k === split.length - 1 ? total - acc : Math.round(total * s / 100); acc += amt;
+      return {seq:k + 1, amount:amt, condition:k === 0 ? 'contract' : k === split.length - 1 ? 'final' : 'report:' + k, status:'pending'}; });
+    const n = S.projects.length + 30;
+    const p = {id:'P' + (S.projects.length + 1) + uid('').slice(1), code:'RMS-2569-0' + n, title, pi:pi.name, faculty:pi.faculty, funder:fid,
+      start, end:addDays(Math.round(Number($('i-months').value || 12) * 30.4), start), total, status:'contracting', contractNo:'วจ.0' + n + '/2569', budget, installments};
+    S.projects.push(p);
+    const ext = f.kind === 'ทุนภายนอก';
+    const c = createItem('contract', p.id, ext ? 'Draft' : 'PendingPI', {nonstandard:ext}, ext ? 'นำเข้าโครงการ สร้างร่างสัญญาตามแบบแหล่งทุน (ส่งนิติการตรวจ)' : 'นำเข้าโครงการ และสร้างสัญญาจาก template อัตโนมัติ');
+    if (ext) log(c, {who:'นิติการ', action:'ตรวจร่างสัญญาแล้ว (จำลอง)', note:'ต้นแบบนี้ข้ามขั้นนิติการ'});
+    save(); go('project', {id:p.id}); toast('นำเข้าแล้ว สร้างสัญญาอัตโนมัติ');
+  };
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-nav],[data-project],[data-open],[data-contract]');
+  if (!t) return;
+  if (t.dataset.nav) go(t.dataset.nav);
+  else if (t.dataset.project) go('project', {id:t.dataset.project});
+  else if (t.dataset.open) go('item', {id:t.dataset.open});
+  else if (t.dataset.contract) openContract(t.dataset.contract);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.matches('tr.click')) e.target.click();
+});
+$('role').onchange = e => { S.role = e.target.value; save(); R.view === 'item' ? render() : go(S.role === 'EXEC' ? 'dashboard' : 'inbox'); };
+let resetArmed = false;
+$('reset').onclick = () => {
+  if (!resetArmed){ resetArmed = true; $('reset').textContent = 'กดอีกครั้งเพื่อยืนยัน'; setTimeout(() => { resetArmed = false; $('reset').textContent = 'รีเซ็ตข้อมูลตัวอย่าง'; }, 3000); return; }
+  resetArmed = false; $('reset').textContent = 'รีเซ็ตข้อมูลตัวอย่าง';
+  seed(); go('inbox'); toast('รีเซ็ตข้อมูลตัวอย่างแล้ว');
+};
+
+S = load(); if (!S) seed();
+render();
+</script>
