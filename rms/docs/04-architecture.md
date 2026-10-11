@@ -106,7 +106,9 @@ erDiagram
   PROJECT ||--|| CONTRACT : มี
   CONTRACT ||--o{ CONTRACT_AMENDMENT : แก้ไข
   PROJECT ||--o{ BUDGET_PLAN : "CR-04 (versioned)"
-  BUDGET_PLAN ||--o{ BUDGET_PLAN_ITEM : รายการ
+  BUDGET_PLAN ||--o{ BUDGET_PLAN_ITEM : "แถว: หมวด/รายการ/รายละเอียด"
+  BUDGET_PLAN_ITEM ||--o{ BUDGET_PLAN_ALLOCATION : "ยอดต่องวด (คอลัมน์)"
+  BUDGET_PLAN ||--o{ INSTALLMENT : "สร้างงวดเมื่อตรวจผ่าน"
   BUDGET_PLAN ||--o{ BUDGET_LINE : "ตั้งงบเมื่อตรวจผ่าน"
   PROJECT ||--o{ BUDGET_LINE : "งบตามหมวด"
   PROJECT ||--o{ INSTALLMENT : แบ่งงวด
@@ -229,13 +231,15 @@ erDiagram
 ```mermaid
 stateDiagram-v2
   [*] --> Draft: นำเข้าโครงการ → แจ้งนักวิจัย
-  Draft --> PendingRO: PI ส่ง (ผ่านเกณฑ์อัตโนมัติ)
+  Draft --> PendingFaculty: PI ส่ง (ผ่านเกณฑ์อัตโนมัติ)
+  PendingFaculty --> Draft: คณะส่งกลับ
+  PendingFaculty --> PendingRO: คณะเห็นชอบ
   PendingRO --> Draft: กองวิจัยส่งกลับ (ระบุเหตุผล)
   PendingRO --> Approved: กองวิจัยตรวจผ่าน
-  Approved --> [*]: emit event → สร้าง BUDGET_LINE + สร้างสัญญา
+  Approved --> [*]: emit event → สร้าง BUDGET_LINE + INSTALLMENT + สัญญา
 ```
 
-> ถ้ายืนยันว่า CR-04 ต้องผ่านคณะด้วย [A12] ให้เพิ่มสถานะ `PendingFaculty` ระหว่าง `Draft` กับ `PendingRO`
+> CR-04 ทำครั้งเดียวก่อนทำสัญญา การเปลี่ยนแปลงหลังสัญญามีผลใช้ Change Request (M5) ซึ่งสร้าง CR-04 ฉบับแก้ไข
 
 ### สัญญา (Contract)
 

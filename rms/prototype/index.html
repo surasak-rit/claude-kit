@@ -97,7 +97,7 @@ tr.click{cursor:pointer}
 tr.click:hover td{background:var(--sunken)}
 .t-title{font-weight:500}
 .crt input,.crt select{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:.3rem .45rem;width:100%;min-width:0}
-.crt td:nth-child(2){min-width:13rem} .crt td:nth-child(3){width:5.5rem} .crt td:nth-child(4){width:9rem}
+.crt td:nth-child(1){min-width:8.5rem} .crt td:nth-child(2){min-width:12rem} .crt td:nth-child(3){min-width:12rem} .crt .cr-amt{min-width:7rem;text-align:right} .crt th .btn{margin-top:.2rem}
 @media (max-width:760px){td:has(.t-title){min-width:15rem}}
 .t-sub{font-size:.8rem;color:var(--muted)}
 
@@ -161,6 +161,7 @@ dialog::backdrop{background:rgb(0 0 0 / .45)}
 
 .toast{position:fixed;left:50%;bottom:calc(1.25rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:.55rem 1rem;border-radius:var(--r);font-size:.9rem;z-index:20;max-width:calc(100vw - 32px)}
 .empty{padding:1.5rem;text-align:center;color:var(--muted);font-size:.92rem}
+.stack{display:flex;flex-direction:column;gap:1rem;min-width:0}
 .split{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:1rem;align-items:start}
 @media (max-width:980px){.split{grid-template-columns:1fr}}
 .dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:.35rem 1rem;font-size:.9rem;margin:0}
@@ -225,12 +226,12 @@ const FUNDERS = {
        categories:['ค่าตอบแทน','ค่าจ้าง','ค่าวัสดุ','ค่าใช้สอย','ค่าครุภัณฑ์'],
        requiresReview:false, template:'สัญญารับทุนภายใน (มาตรฐาน) ฉบับ 2569',
        reportForm:'แบบรายงานความก้าวหน้า ทุนภายใน v2', refundRule:'คืนเงินเหลือจ่ายทั้งหมดภายใน 30 วันหลังปิดโครงการ',
-       outputs:'บทความตีพิมพ์ในวารสารระดับชาติขึ้นไป 1 เรื่อง ภายใน 12 เดือนหลังปิดโครงการ', advanceDays:30, budgetShiftPct:20, maxCompPct:30, equipThreshold:10000, export:'—'},
+       outputs:'บทความตีพิมพ์ในวารสารระดับชาติขึ้นไป 1 เรื่อง ภายใน 12 เดือนหลังปิดโครงการ', advanceDays:30, budgetShiftPct:20, maxCompPct:30, minFinalPct:10, defaultInst:3, export:'—'},
   F2: {id:'F2', name:'แหล่งทุนภายนอก ก (ตัวอย่าง)', kind:'ทุนภายนอก',
        categories:['ค่าตอบแทน','ค่าจ้าง','ค่าวัสดุ','ค่าใช้สอย','ค่าครุภัณฑ์'],
        requiresReview:true, template:'สัญญาตามแบบของแหล่งทุน (ผ่านนิติการ)',
        reportForm:'แบบรายงานตามรูปแบบแหล่งทุน', refundRule:'คืนเงินเหลือจ่ายและดอกผลให้แหล่งทุน',
-       outputs:'บทความวารสารนานาชาติ (Q1–Q2) 1 เรื่อง และรายงานการนำไปใช้ประโยชน์', advanceDays:30, budgetShiftPct:10, maxCompPct:20, equipThreshold:10000, export:'Excel ตามแม่แบบแหล่งทุน'},
+       outputs:'บทความวารสารนานาชาติ (Q1–Q2) 1 เรื่อง และรายงานการนำไปใช้ประโยชน์', advanceDays:30, budgetShiftPct:10, maxCompPct:20, minFinalPct:20, defaultInst:3, export:'Excel ตามแม่แบบแหล่งทุน'},
 };
 
 /* ---------- workflow definitions ---------- */
@@ -238,12 +239,15 @@ const reasonOf = r => r ? ' — ' + r : '';
 const WF = {
   budgetplan: {label:'เอกสารแจกแจงงบประมาณ (CR-04)', states:{
     Draft:          {label:'นักวิจัยจัดทำ CR-04', role:'PI', sla:7, tone:'wait', form: crForm,
-                     collect: it => { const items = readCR(), bad = crChecks(P(it.projectId), items).filter(c => !c.ok);
-                       return bad.length ? {error:'ยังส่งไม่ได้: ' + bad.map(c => c.label).join(' · ')} : {data:{items}}; },
-                     actions:[{id:'submit', label:'ส่ง CR-04 ให้กองวิจัยตรวจ', to:'PendingRO', kind:'primary'}]},
+                     collect: it => { const {items, n} = readCR(), bad = crChecks(P(it.projectId), items, n).filter(c => !c.ok);
+                       return bad.length ? {error:'ยังส่งไม่ได้: ' + bad.map(c => c.label).join(' · ')} : {data:{items, n}}; },
+                     actions:[{id:'submit', label:'ส่ง CR-04 ให้คณะ', to:'PendingFaculty', kind:'primary'}]},
+    PendingFaculty: {label:'รอคณะพิจารณา CR-04', role:'FAC', sla:3, tone:'wait', batch:'approve',
+                     actions:[{id:'approve', label:'เห็นชอบ ส่งกองวิจัยตรวจ', to:'PendingRO', kind:'primary'},
+                              {id:'return', label:'ส่งกลับนักวิจัย', to:'Draft', reason:true}]},
     PendingRO:      {label:'รอกองวิจัยตรวจ CR-04', role:'RO', sla:3, tone:'wait',
                      actions:[{id:'approve', label:'ตรวจผ่าน และสร้างสัญญา', to:'Approved', kind:'primary'},
-                              {id:'return', label:'ส่งกลับให้นักวิจัยแก้ไข', to:'Draft', reason:true}]},
+                              {id:'return', label:'ส่งกลับนักวิจัย', to:'Draft', reason:true}]},
     Approved:       {label:'ตรวจผ่านแล้ว', tone:'ok', final:true},
   }},
   contract: {label:'สัญญารับทุน', states:{
@@ -360,41 +364,57 @@ const WF = {
   }},
 };
 
-function crRow(cats, r){
-  return `<tr><td><select class="cr-cat" aria-label="หมวดงบ">${cats.map(c => `<option ${c === r.cat ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></td>
+/* ---------- CR-04: rows = budget items, columns = installments ---------- */
+const condOf = (i, n) => i === 0 ? 'contract' : i === n - 1 ? 'final' : 'report:' + i;
+const rowTotal = r => sum(r.amounts);
+const colTotals = (items, n) => Array.from({length:n}, (_, i) => sum(items, r => r.amounts[i] || 0));
+function crEditTable(p, items, n){
+  const cats = FUNDERS[p.funder].categories, cols = Array.from({length:n}, (_, i) => i);
+  return `<div class="tablewrap"><table class="crt" data-n="${n}"><thead><tr><th>หมวดค่าใช้จ่าย</th><th>รายการ</th><th>รายละเอียด</th>
+    ${cols.map(i => `<th class="r">งวดที่ ${i + 1}<br><span class="small muted cond">${esc(COND(condOf(i, n)))}</span><br>${n > 1 ? `<button type="button" class="btn sm cr-delcol" data-col="${i}" aria-label="ลบงวดที่ ${i + 1}">ลบงวด</button>` : ''}</th>`).join('')}
+    <th class="r">รวม (บาท)</th><th></th></tr></thead>
+  <tbody id="cr-body">${items.map(r => `<tr>
+    <td><select class="cr-cat" aria-label="หมวดค่าใช้จ่าย">${cats.map(c => `<option ${c === r.cat ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></td>
     <td><input class="cr-desc" aria-label="รายการ" value="${esc(r.desc)}"></td>
-    <td><input class="cr-qty" type="number" min="1" aria-label="จำนวน" value="${r.qty}"></td>
-    <td><input class="cr-unit" type="number" min="0" aria-label="ราคาต่อหน่วย" value="${r.unit}"></td>
-    <td class="r num cr-line">${baht(r.qty * r.unit)}</td>
-    <td><button type="button" class="btn sm cr-del">ลบ</button></td></tr>`;
+    <td><input class="cr-detail" aria-label="รายละเอียด" value="${esc(r.detail)}" placeholder="เช่น 12 เดือน × 5,000 บาท"></td>
+    ${cols.map(i => `<td><input class="cr-amt" type="number" min="0" aria-label="งวดที่ ${i + 1}" value="${r.amounts[i] || 0}"></td>`).join('')}
+    <td class="r num cr-line"></td><td><button type="button" class="btn sm cr-del">ลบ</button></td></tr>`).join('')}</tbody>
+  <tfoot><tr><td colspan="3"><b>รวมต่องวด</b></td>${cols.map(i => `<td class="r num"><b class="cr-col"></b><br><span class="small muted cr-colpct"></span></td>`).join('')}<td class="r num"><b id="cr-total"></b></td><td></td></tr></tfoot></table></div>`;
 }
 function crForm(it){
-  const p = P(it.projectId), cats = FUNDERS[p.funder].categories;
-  const items = it.data.items && it.data.items.length ? it.data.items : cats.map(c => ({cat:c, desc:'', qty:1, unit:0}));
-  return `<p class="small muted">แจกแจงรายการตามหมวดของแหล่งทุน ยอดรวมต้องเท่ากับวงเงินที่อนุมัติ <b class="num">${baht(p.total)}</b> บาท ระบบตรวจเกณฑ์ให้ทันทีขณะกรอก</p>
-  <div class="tablewrap"><table class="crt"><thead><tr><th>หมวด</th><th>รายการ</th><th>จำนวน</th><th>ราคาต่อหน่วย (บาท)</th><th class="r">รวม (บาท)</th><th></th></tr></thead>
-  <tbody id="cr-body">${items.map(r => crRow(cats, r)).join('')}</tbody>
-  <tfoot><tr><td colspan="4"><b>รวมทั้งสิ้น</b></td><td class="r num"><b id="cr-total"></b></td><td></td></tr></tfoot></table></div>
-  <div class="btns"><button type="button" class="btn sm" id="cr-add">+ เพิ่มรายการ</button></div>
+  const p = P(it.projectId), f = FUNDERS[p.funder];
+  const n = it.data.n || f.defaultInst;
+  const items = it.data.items && it.data.items.length ? it.data.items : f.categories.map(c => ({cat:c, desc:'', detail:'', amounts:Array(n).fill(0)}));
+  return `<p class="small muted">แต่ละแถวคือรายการค่าใช้จ่าย แต่ละคอลัมน์คืองวดเงิน เพิ่มหรือลดงวดได้ ยอดรวมต้องเท่ากับวงเงินที่อนุมัติ <b class="num">${baht(p.total)}</b> บาท ระบบตรวจเกณฑ์ให้ทันทีขณะกรอก</p>
+  <div id="cr-wrap">${crEditTable(p, items, n)}</div>
+  <div class="btns"><button type="button" class="btn sm" id="cr-add">+ เพิ่มรายการ</button><button type="button" class="btn sm" id="cr-addcol">+ เพิ่มงวด</button></div>
   <div id="cr-checks"></div>`;
 }
 function readCR(){
-  return [...document.querySelectorAll('#cr-body tr')].map(tr => ({cat:tr.querySelector('.cr-cat').value, desc:tr.querySelector('.cr-desc').value.trim(),
-    qty:Number(tr.querySelector('.cr-qty').value), unit:Number(tr.querySelector('.cr-unit').value)})).filter(r => r.desc || r.unit);
+  const t = document.querySelector('.crt'), n = Number(t.dataset.n);
+  const items = [...document.querySelectorAll('#cr-body tr')].map(tr => ({cat:tr.querySelector('.cr-cat').value, desc:tr.querySelector('.cr-desc').value.trim(),
+    detail:tr.querySelector('.cr-detail').value.trim(), amounts:[...tr.querySelectorAll('.cr-amt')].map(x => Math.max(0, Number(x.value) || 0))}))
+    .filter(r => r.desc || r.detail || rowTotal(r) > 0);
+  return {items, n};
 }
-function crChecks(p, items){
-  const f = FUNDERS[p.funder], total = sum(items, r => r.qty * r.unit), comp = sum(items.filter(r => r.cat === 'ค่าตอบแทน'), r => r.qty * r.unit);
-  return [
+function crChecks(p, items, n){
+  const f = FUNDERS[p.funder], total = sum(items, rowTotal), cols = colTotals(items, n);
+  const comp = sum(items.filter(r => r.cat === 'ค่าตอบแทน'), rowTotal);
+  const c = [
+    {label:'ทุกรายการมีหมวดค่าใช้จ่าย รายการ รายละเอียด และยอดเงิน', ok:items.length > 0 && items.every(r => r.cat && r.desc && r.detail && rowTotal(r) > 0)},
     {label:`ยอดรวม ${baht(total)} บาท เท่ากับวงเงินที่อนุมัติ ${baht(p.total)} บาท`, ok:total === p.total},
-    {label:'ทุกรายการมีรายละเอียด จำนวน และราคาต่อหน่วย', ok:items.length > 0 && items.every(r => r.desc && r.qty > 0 && r.unit > 0)},
+    {label:'ทุกงวดมียอดเงินมากกว่า 0', ok:cols.every(x => x > 0)},
     {label:`ค่าตอบแทนไม่เกิน ${f.maxCompPct}% ของวงเงิน (ตอนนี้ ${pct(comp, p.total)}%)`, ok:comp <= p.total * f.maxCompPct / 100},
-    {label:`รายการหมวดค่าครุภัณฑ์ราคาต่อหน่วยเกิน ${baht(f.equipThreshold)} บาท (ต่ำกว่านั้นให้จัดเป็นค่าวัสดุ)`, ok:items.filter(r => r.cat === 'ค่าครุภัณฑ์').every(r => r.unit > f.equipThreshold)},
   ];
+  if (n > 1) c.push({label:`งวดสุดท้ายไม่น้อยกว่า ${f.minFinalPct}% ของวงเงิน (ตอนนี้ ${(cols[n - 1] / p.total * 100).toFixed(1)}%)`, ok:cols[n - 1] >= p.total * f.minFinalPct / 100});
+  return c;
 }
-function crTable(items){
-  return `<div class="tablewrap"><table><thead><tr><th>หมวด</th><th>รายการ</th><th class="r">จำนวน</th><th class="r">ราคาต่อหน่วย</th><th class="r">รวม (บาท)</th></tr></thead><tbody>
-  ${items.map(r => `<tr><td class="small">${esc(r.cat)}</td><td>${esc(r.desc)}</td><td class="r num">${r.qty}</td><td class="r num">${baht(r.unit)}</td><td class="r num">${baht(r.qty * r.unit)}</td></tr>`).join('')}
-  <tr><td colspan="4"><b>รวม</b></td><td class="r num"><b>${baht(sum(items, r => r.qty * r.unit))}</b></td></tr></tbody></table></div>`;
+function crTable(items, n){
+  const cols = Array.from({length:n}, (_, i) => i), ct = colTotals(items, n);
+  return `<div class="tablewrap"><table><thead><tr><th>หมวด</th><th>รายการ</th><th>รายละเอียด</th>${cols.map(i => `<th class="r">งวดที่ ${i + 1}</th>`).join('')}<th class="r">รวม (บาท)</th></tr></thead><tbody>
+  ${items.map(r => `<tr><td class="small">${esc(r.cat)}</td><td>${esc(r.desc)}</td><td class="small muted">${esc(r.detail)}</td>${cols.map(i => `<td class="r num">${baht(r.amounts[i])}</td>`).join('')}<td class="r num">${baht(rowTotal(r))}</td></tr>`).join('')}
+  <tr><td colspan="3"><b>รวม</b></td>${ct.map(x => `<td class="r num"><b>${baht(x)}</b></td>`).join('')}<td class="r num"><b>${baht(sum(ct))}</b></td></tr>
+  <tr><td colspan="3" class="small muted">เงื่อนไขการจ่าย</td>${cols.map(i => `<td class="r small muted">${esc(COND(condOf(i, n)))}</td>`).join('')}<td></td></tr></tbody></table></div>`;
 }
 
 function reportForm(it){
@@ -418,7 +438,7 @@ function reportCollect(it){
 }
 
 /* ---------- state ---------- */
-const KEY = 'rms-prototype-v2';
+const KEY = 'rms-prototype-v3';
 let S;
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} }
 function load(){ try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v === 1) return s; } catch(e) {} return null; }
@@ -511,11 +531,12 @@ function createReports(p){
 }
 const HOOKS = {
   'budgetplan:Approved': it => {
-    const p = P(it.projectId); p.budget = {}; p.budgetItems = it.data.items;
-    it.data.items.forEach(r => { (p.budget[r.cat] = p.budget[r.cat] || {planned:0, actual:0}).planned += r.qty * r.unit; });
+    const p = P(it.projectId), {items, n} = it.data; p.budget = {}; p.budgetItems = items;
+    items.forEach(r => { (p.budget[r.cat] = p.budget[r.cat] || {planned:0, actual:0}).planned += rowTotal(r); });
+    p.installments = colTotals(items, n).map((amount, i) => ({seq:i + 1, amount, condition:condOf(i, n), status:'pending'}));
     const ext = FUNDERS[p.funder].kind === 'ทุนภายนอก';
     if (!itemsOf(p.id, 'contract').length) createItem('contract', p.id, ext ? 'Draft' : 'PendingPI', {nonstandard:ext},
-      ext ? 'ระบบสร้างร่างสัญญาตามแบบแหล่งทุน พร้อมแนบท้าย CR-04 (ส่งนิติการตรวจ)' : 'ระบบสร้างสัญญาจาก template พร้อมแนบท้าย CR-04 อัตโนมัติ');
+      ext ? 'ระบบสร้างร่างสัญญาตามแบบแหล่งทุน พร้อมงวดเงินและแนบท้าย CR-04 (ส่งนิติการตรวจ)' : 'ระบบสร้างสัญญาจาก template พร้อมงวดเงินและแนบท้าย CR-04 อัตโนมัติ');
   },
   'contract:Active': it => { const p = P(it.projectId); p.status = 'active'; if (!itemsOf(p.id, 'report').length) createReports(p); makeEligible(p, 'contract'); },
   'disbursement:Paid': it => { const inst = P(it.projectId).installments.find(i => i.seq === it.data.seq); inst.status = 'paid'; inst.paidAt = today(); },
@@ -623,24 +644,22 @@ function seed(){
   raw('contract', 'P5', 'PendingApprover', {}, -2, [[-6,'ระบบ','สร้างสัญญาจาก template อัตโนมัติ'],[-5,'ดร.อรุณี แสงทอง','ลงนามอิเล็กทรอนิกส์'],[-2,'รศ.ดร.วิภาวี ศรีสุข','อนุมัติ ส่งผู้มีอำนาจ']]);
 
   const cr7 = [
-    {cat:'ค่าตอบแทน', desc:'ค่าตอบแทนหัวหน้าโครงการ (เดือน)', qty:12, unit:5000},
-    {cat:'ค่าจ้าง', desc:'ผู้ช่วยวิจัย วุฒิปริญญาโท (เดือน)', qty:12, unit:15000},
-    {cat:'ค่าวัสดุ', desc:'สารเคมีและวัสดุวิทยาศาสตร์', qty:1, unit:70000},
-    {cat:'ค่าใช้สอย', desc:'ค่าเดินทางเก็บตัวอย่างดินภาคสนาม (ครั้ง)', qty:6, unit:5000},
-    {cat:'ค่าครุภัณฑ์', desc:'เครื่องชั่งดิจิทัลทศนิยม 2 ตำแหน่ง', qty:1, unit:8500},
-    {cat:'ค่าครุภัณฑ์', desc:'เครื่องวัด pH แบบตั้งโต๊ะ', qty:1, unit:51500}];
+    {cat:'ค่าตอบแทน', desc:'ค่าตอบแทนหัวหน้าโครงการ', detail:'12 เดือน × 5,000 บาท', amounts:[25000, 25000, 10000]},
+    {cat:'ค่าจ้าง', desc:'ผู้ช่วยวิจัย วุฒิปริญญาโท', detail:'12 เดือน × 15,000 บาท', amounts:[75000, 90000, 15000]},
+    {cat:'ค่าวัสดุ', desc:'สารเคมีและวัสดุวิทยาศาสตร์', detail:'กรดไนตริก, สารมาตรฐาน, ภาชนะเก็บตัวอย่าง', amounts:[40000, 25000, 5000]},
+    {cat:'ค่าใช้สอย', desc:'ค่าเดินทางเก็บตัวอย่างดินภาคสนาม', detail:'6 ครั้ง × 5,000 บาท', amounts:[15000, 15000, 0]},
+    {cat:'ค่าครุภัณฑ์', desc:'เครื่องวัด pH แบบตั้งโต๊ะ', detail:'1 เครื่อง ความละเอียด 0.01 pH', amounts:[60000, 0, 0]}];
   mk({id:'P7', code:'RMS-2569-022', title:'ไบโอชาร์จากซังข้าวโพดเพื่อฟื้นฟูดินเปรี้ยวในพื้นที่ปลูกข้าว', pi:'ผศ.ดร.สมชาย ใจดี', faculty:'คณะวิทยาศาสตร์', funder:'F1',
-    start:addDays(30), end:addDays(395), total:400000, status:'contracting', contractNo:'วจ.022/2569', budget:{},
-    installments:[{seq:1, amount:160000, condition:'contract', status:'pending'}, {seq:2, amount:160000, condition:'report:1', status:'pending'}, {seq:3, amount:80000, condition:'final', status:'pending'}]});
-  raw('budgetplan', 'P7', 'Draft', {items:cr7}, -2, [[-3,'ระบบ','นำเข้าโครงการที่อนุมัติแล้ว และแจ้งนักวิจัยจัดทำ CR-04'],[-2,'ผศ.ดร.สมชาย ใจดี','บันทึกร่าง CR-04 (ยังไม่ส่ง)']]);
+    start:addDays(30), end:addDays(395), total:400000, status:'contracting', contractNo:'วจ.022/2569', budget:{}, installments:[]});
+  raw('budgetplan', 'P7', 'Draft', {items:cr7, n:3}, -2, [[-3,'ระบบ','นำเข้าโครงการที่อนุมัติแล้ว และแจ้งนักวิจัยจัดทำ CR-04'],[-2,'ผศ.ดร.สมชาย ใจดี','บันทึกร่าง CR-04 (ยังไม่ส่ง)']]);
   mk({id:'P8', code:'RMS-2569-025', title:'รูปแบบการท่องเที่ยวชุมชนคาร์บอนต่ำในลุ่มน้ำน่าน', pi:'ดร.อรุณี แสงทอง', faculty:'คณะวิทยาศาสตร์', funder:'F1',
-    start:addDays(21), end:addDays(386), total:280000, status:'contracting', contractNo:'วจ.025/2569', budget:{},
-    installments:[{seq:1, amount:140000, condition:'contract', status:'pending'}, {seq:2, amount:140000, condition:'final', status:'pending'}]});
-  raw('budgetplan', 'P8', 'PendingRO', {items:[
-    {cat:'ค่าตอบแทน', desc:'ค่าตอบแทนหัวหน้าโครงการ (เดือน)', qty:12, unit:4000},
-    {cat:'ค่าจ้าง', desc:'ผู้ช่วยวิจัย วุฒิปริญญาตรี (เดือน)', qty:10, unit:12000},
-    {cat:'ค่าใช้สอย', desc:'ค่าสำรวจและจัดเวทีชุมชน (ครั้ง)', qty:8, unit:9000},
-    {cat:'ค่าวัสดุ', desc:'วัสดุสำนักงานและวัสดุจัดประชุม', qty:1, unit:40000}]}, -1, [[-4,'ระบบ','นำเข้าโครงการที่อนุมัติแล้ว และแจ้งนักวิจัยจัดทำ CR-04'],[-1,'ดร.อรุณี แสงทอง','ส่ง CR-04 ให้กองวิจัยตรวจ']]);
+    start:addDays(21), end:addDays(386), total:280000, status:'contracting', contractNo:'วจ.025/2569', budget:{}, installments:[]});
+  raw('budgetplan', 'P8', 'PendingFaculty', {n:2, items:[
+    {cat:'ค่าตอบแทน', desc:'ค่าตอบแทนหัวหน้าโครงการ', detail:'12 เดือน × 4,000 บาท', amounts:[24000, 24000]},
+    {cat:'ค่าจ้าง', desc:'ผู้ช่วยวิจัย วุฒิปริญญาตรี', detail:'10 เดือน × 12,000 บาท', amounts:[72000, 48000]},
+    {cat:'ค่าใช้สอย', desc:'ค่าสำรวจและจัดเวทีชุมชน', detail:'8 ครั้ง × 9,000 บาท', amounts:[36000, 36000]},
+    {cat:'ค่าวัสดุ', desc:'วัสดุสำนักงานและวัสดุจัดประชุม', detail:'กระดาษ หมึกพิมพ์ ป้าย และอุปกรณ์เวทีชุมชน', amounts:[20000, 20000]}]}, -1,
+    [[-4,'ระบบ','นำเข้าโครงการที่อนุมัติแล้ว และแจ้งนักวิจัยจัดทำ CR-04'],[-1,'ดร.อรุณี แสงทอง','ส่ง CR-04 ให้คณะ']]);
 
   mk({id:'P6', code:'RMS-2567-031', title:'เซนเซอร์วัดความชื้นดินต้นทุนต่ำสำหรับสวนทุเรียน', pi:'อ.ดร.ณัฐพล เรืองศรี', faculty:'คณะวิศวกรรมศาสตร์', funder:'F1',
     start:addDays(-700), end:addDays(-335), total:250000, status:'closed', contractNo:'วจ.031/2567',
@@ -799,7 +818,8 @@ function pBudget(p){
 }
 
 function pInstall(p){
-  return `<section class="panel"><div class="panel-head"><h2>งวดเงิน</h2><span class="small muted">คำขอเบิกสร้างอัตโนมัติเมื่อเงื่อนไขครบ</span></div>
+  if (!p.installments.length) return `<section class="panel"><h2>งวดเงิน</h2><div class="empty">งวดเงินจะถูกกำหนดจาก CR-04 ที่ตรวจผ่านแล้ว</div></section>`;
+  return `<section class="panel"><div class="panel-head"><h2>งวดเงิน</h2><span class="small muted">กำหนดจาก CR-04 · คำขอเบิกสร้างอัตโนมัติเมื่อเงื่อนไขครบ</span></div>
   <div class="tablewrap"><table><thead><tr><th>งวด</th><th class="r">จำนวนเงิน (บาท)</th><th>เงื่อนไข</th><th>สถานะ</th></tr></thead><tbody>
   ${p.installments.map(i => { const req = itemsOf(p.id, 'disbursement').find(d => d.data.seq === i.seq);
     const st = i.status === 'paid' ? pill('โอนแล้ว' + (i.paidAt ? ' ' + fmtDate(i.paidAt) : ''), 'ok') : req ? pill(stOf(req).label, stOf(req).tone) : pill('รอเงื่อนไข', '');
@@ -845,11 +865,11 @@ function vItem(){
       ${c ? `<h3>เนื้อหารายงาน</h3><p>${esc(c.summary)}</p><p class="small muted">ความก้าวหน้า <span class="num">${c.progress}%</span></p>` : ''}`;
   } else if (it.type === 'budgetplan'){
     const f = FUNDERS[p.funder];
-    info = `<dl class="dl"><dt>วงเงินที่อนุมัติ</dt><dd class="num">${baht(p.total)} บาท</dd><dt>แหล่งทุน</dt><dd>${esc(f.name)}</dd><dt>ผู้จัดทำ</dt><dd>${esc(p.pi)}</dd><dt>ผู้ตรวจ</dt><dd>กองบริหารงานวิจัย</dd></dl>`;
+    info = `<dl class="dl"><dt>วงเงินที่อนุมัติ</dt><dd class="num">${baht(p.total)} บาท</dd><dt>แหล่งทุน</dt><dd>${esc(f.name)}</dd><dt>ผู้จัดทำ</dt><dd>${esc(p.pi)}</dd><dt>ลำดับการพิจารณา</dt><dd>นักวิจัย → คณะ → กองบริหารงานวิจัย</dd></dl>`;
     if (!(mine && it.state === 'Draft')){
       const items = d.items || [];
-      info += items.length ? `<h3>รายการแจกแจงงบ</h3>${crTable(items)}<h3>ผลการตรวจเกณฑ์อัตโนมัติ</h3>${checklist(crChecks(p, items))}` : `<p class="muted small">นักวิจัยยังไม่ได้กรอกรายการ</p>`;
-      if (it.state === 'PendingRO') info += `<p class="hint muted">ระบบตรวจเกณฑ์ที่เขียนเป็นกฎได้แล้ว กองวิจัยพิจารณาความเหมาะสมของรายการ</p>`;
+      info += items.length ? `<h3>รายการแจกแจงงบและงวดเงิน</h3>${crTable(items, d.n)}<h3>ผลการตรวจเกณฑ์อัตโนมัติ</h3>${checklist(crChecks(p, items, d.n))}` : `<p class="muted small">นักวิจัยยังไม่ได้กรอกรายการ</p>`;
+      if (it.state === 'PendingRO' || it.state === 'PendingFaculty') info += `<p class="hint muted">ระบบตรวจเกณฑ์ที่เขียนเป็นกฎได้แล้ว ผู้พิจารณาดูความเหมาะสมของรายการและการแบ่งงวด</p>`;
     }
   } else if (it.type === 'contract'){
     info = `<dl class="dl"><dt>เลขที่สัญญา</dt><dd class="mono">${esc(p.contractNo)}</dd><dt>แบบสัญญา</dt><dd>${esc(FUNDERS[p.funder].template)}</dd><dt>ลำดับการลงนาม</dt><dd>นักวิจัย → คณะ → ผู้มีอำนาจ</dd></dl>
@@ -872,7 +892,7 @@ function vItem(){
   }
   return `<div class="crumb"><button type="button" data-nav="${S.role === 'REVIEWER' ? 'inbox' : 'projects'}">${S.role === 'REVIEWER' ? 'งานรอดำเนินการ' : 'โครงการ'}</button><span>/</span>${S.role === 'REVIEWER' ? `<span class="mono">${esc(p.code)}</span>` : `<button type="button" data-project="${p.id}" class="mono">${esc(p.code)}</button>`}<span>/</span><span>${esc(itemTitle(it))}</span></div>
   <div class="pagehead"><h1>${esc(itemTitle(it))}</h1><div class="meta"><span>${pill(st.label, st.tone)}</span>${st.final ? '' : `<span>${pill(a.txt, a.tone)}</span>`}<span>${esc(p.title)}</span></div></div>
-  <div class="split">
+  <div class="${it.type === 'budgetplan' ? 'stack' : 'split'}">
     <div style="display:flex;flex-direction:column;gap:1rem;min-width:0"><section class="panel">${info}</section>${actions}</div>
     <section class="panel"><h2>ประวัติ</h2><ul class="timeline">${[...it.history].reverse().map(h => `<li><span class="when num">${fmtTime(h.at)}</span><span><span class="${h.sys ? 'sys' : ''}">${esc(h.who)}</span> · ${esc(h.action)}${h.note ? `<br><span class="small muted">${esc(h.note)}</span>` : ''}</span></li>`).join('')}</ul></section>
   </div>`;
@@ -887,9 +907,8 @@ function vImport(){
     <div class="field"><label for="i-start">วันเริ่ม</label><input id="i-start" type="date" value="${addDays(14)}"></div>
     <div class="field"><label for="i-months">ระยะเวลา (เดือน)</label><input id="i-months" type="number" min="3" max="60" value="12"></div>
     <div class="field"><label for="i-total">วงเงินที่อนุมัติ (บาท)</label><input id="i-total" type="number" min="1" value="310000"></div>
-    <div class="field"><label for="i-inst">การแบ่งงวด</label><select id="i-inst"><option value="40,40,20">3 งวด: 40 / 40 / 20</option><option value="50,50">2 งวด: 50 / 50</option><option value="30,30,30,10">4 งวด: 30 / 30 / 30 / 10</option></select></div>
   </form>
-  <div class="btns"><button class="btn primary" type="button" id="i-submit">นำเข้าและส่งให้นักวิจัยจัดทำ CR-04</button><span class="hint muted">ขั้นต่อไป: นักวิจัยจัดทำ CR-04 → กองวิจัยตรวจ → ระบบสร้างสัญญาให้</span></div></section>`;
+  <div class="btns"><button class="btn primary" type="button" id="i-submit">นำเข้าและส่งให้นักวิจัยจัดทำ CR-04</button><span class="hint muted">ขั้นต่อไป: นักวิจัยจัดทำ CR-04 (รวมการแบ่งงวด) → คณะ → กองวิจัยตรวจ → ระบบสร้างสัญญาให้</span></div></section>`;
 }
 
 function vFunders(){
@@ -898,7 +917,7 @@ function vFunders(){
     <dl class="dl"><dt>หมวดงบ</dt><dd>${f.categories.map(esc).join(', ')}</dd><dt>แบบสัญญา</dt><dd>${esc(f.template)}</dd><dt>แบบรายงาน</dt><dd>${esc(f.reportForm)}</dd>
     <dt>ผู้ทรงคุณวุฒิ</dt><dd>${f.requiresReview ? 'ต้องประเมินทุกรายงาน' : 'ไม่ต้อง'}</dd><dt>ล้างหนี้เงินยืม</dt><dd>ภายใน ${f.advanceDays} วัน</dd>
     <dt>ปรับงบระหว่างหมวด</dt><dd>≤ ${f.budgetShiftPct}% คณะ + กองวิจัยอนุมัติจบ · เกินต้องถึงผู้มีอำนาจ${f.kind === 'ทุนภายนอก' ? ' และแหล่งทุน' : ''}</dd>
-    <dt>เกณฑ์ CR-04</dt><dd>ค่าตอบแทน ≤ ${f.maxCompPct}% · ครุภัณฑ์ราคาต่อหน่วยเกิน ${baht(f.equipThreshold)} บาท</dd><dt>คืนเงิน</dt><dd>${esc(f.refundRule)}</dd><dt>ผลผลิตผูกพัน</dt><dd>${esc(f.outputs)}</dd><dt>รูปแบบ export</dt><dd>${esc(f.export)}</dd></dl></section>`).join('')}</div>`;
+    <dt>เกณฑ์ CR-04</dt><dd>ค่าตอบแทน ≤ ${f.maxCompPct}% · งวดสุดท้าย ≥ ${f.minFinalPct}% · ตั้งต้น ${f.defaultInst} งวด</dd><dt>คืนเงิน</dt><dd>${esc(f.refundRule)}</dd><dt>ผลผลิตผูกพัน</dt><dd>${esc(f.outputs)}</dd><dt>รูปแบบ export</dt><dd>${esc(f.export)}</dd></dl></section>`).join('')}</div>`;
 }
 
 function vDashboard(){
@@ -990,16 +1009,28 @@ function bindView(){
       save(); render(); toast(act.label + ' แล้ว');
     });
   }
-  if ($('cr-body')){
+  if ($('cr-wrap')){
     const p = P(I(R.id).projectId), cats = FUNDERS[p.funder].categories;
     const refresh = () => {
-      $('cr-body').querySelectorAll('tr').forEach(tr => { tr.querySelector('.cr-line').textContent = baht(Number(tr.querySelector('.cr-qty').value) * Number(tr.querySelector('.cr-unit').value)); });
-      const items = readCR(); $('cr-total').textContent = baht(sum(items, r => r.qty * r.unit));
-      $('cr-checks').innerHTML = checklist(crChecks(p, items));
+      const {items, n} = readCR();
+      $('cr-body').querySelectorAll('tr').forEach(tr => { tr.querySelector('.cr-line').textContent = baht(sum([...tr.querySelectorAll('.cr-amt')].map(x => Number(x.value) || 0))); });
+      const ct = colTotals(items, n);
+      document.querySelectorAll('.cr-col').forEach((el, i) => el.textContent = baht(ct[i]));
+      document.querySelectorAll('.cr-colpct').forEach((el, i) => el.textContent = pct(ct[i], p.total) + '%');
+      $('cr-total').textContent = baht(sum(ct));
+      $('cr-checks').innerHTML = checklist(crChecks(p, items, n));
     };
+    const redraw = (items, n) => { $('cr-wrap').innerHTML = crEditTable(p, items, n); refresh(); };
+    const readAll = () => { const n = Number(document.querySelector('.crt').dataset.n);
+      return {n, items:[...document.querySelectorAll('#cr-body tr')].map(tr => ({cat:tr.querySelector('.cr-cat').value, desc:tr.querySelector('.cr-desc').value, detail:tr.querySelector('.cr-detail').value, amounts:[...tr.querySelectorAll('.cr-amt')].map(x => Number(x.value) || 0)}))}; };
     $('actpanel').addEventListener('input', refresh);
-    $('cr-add').onclick = () => { $('cr-body').insertAdjacentHTML('beforeend', crRow(cats, {cat:cats[0], desc:'', qty:1, unit:0})); refresh(); };
-    $('cr-body').addEventListener('click', e => { const b = e.target.closest('.cr-del'); if (b){ b.closest('tr').remove(); refresh(); } });
+    $('cr-add').onclick = () => { const {items, n} = readAll(); items.push({cat:cats[0], desc:'', detail:'', amounts:Array(n).fill(0)}); redraw(items, n); };
+    $('cr-addcol').onclick = () => { const {items, n} = readAll(); items.forEach(r => r.amounts.push(0)); redraw(items, n + 1); };
+    $('cr-wrap').addEventListener('click', e => {
+      const del = e.target.closest('.cr-del'), dc = e.target.closest('.cr-delcol');
+      if (del){ del.closest('tr').remove(); refresh(); }
+      if (dc){ const {items, n} = readAll(), k = Number(dc.dataset.col); items.forEach(r => r.amounts.splice(k, 1)); redraw(items, n - 1); }
+    });
     refresh();
   }
   if ($('expform')){
@@ -1022,14 +1053,12 @@ function bindView(){
     const fid = $('i-funder').value, f = FUNDERS[fid], pi = PEOPLE.find(x => x.name === $('i-pi').value);
     const title = $('i-title').value.trim(); if (!title) return toast('ระบุชื่อโครงการ');
     const total = Math.round(Number($('i-total').value)); if (!(total > 0)) return toast('ระบุวงเงินที่อนุมัติ');
-    const split = $('i-inst').value.split(',').map(Number), start = $('i-start').value || addDays(14);
-    let acc = 0; const installments = split.map((s, k) => { const amt = k === split.length - 1 ? total - acc : Math.round(total * s / 100); acc += amt;
-      return {seq:k + 1, amount:amt, condition:k === 0 ? 'contract' : k === split.length - 1 ? 'final' : 'report:' + k, status:'pending'}; });
+    const start = $('i-start').value || addDays(14), installments = [];
     const n = S.projects.length + 30;
     const p = {id:'P' + (S.projects.length + 1) + uid('').slice(1), code:'RMS-2569-0' + n, title, pi:pi.name, faculty:pi.faculty, funder:fid,
       start, end:addDays(Math.round(Number($('i-months').value || 12) * 30.4), start), total, status:'contracting', contractNo:'วจ.0' + n + '/2569', budget:{}, installments};
     S.projects.push(p);
-    createItem('budgetplan', p.id, 'Draft', {items:[]}, 'นำเข้าโครงการที่อนุมัติแล้ว และแจ้งนักวิจัยจัดทำ CR-04');
+    createItem('budgetplan', p.id, 'Draft', {items:[], n:f.defaultInst}, 'นำเข้าโครงการที่อนุมัติแล้ว และแจ้งนักวิจัยจัดทำ CR-04');
     save(); go('project', {id:p.id}); toast('นำเข้าแล้ว แจ้งนักวิจัยจัดทำ CR-04');
   };
 }
