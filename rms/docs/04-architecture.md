@@ -87,7 +87,7 @@ flowchart TB
 |---|---|---|
 | Workflow Engine | ทุกเรื่องที่ต้องอนุมัติใช้ engine เดียว: กำหนดขั้น, ผู้ถือเรื่อง, SLA, ผู้ปฏิบัติแทน, ประวัติ | กำหนดเส้นทางด้วย config ในตาราง (ไม่ hard-code) เพื่อปรับตามระเบียบได้ |
 | Rule Engine | ตรวจเงื่อนไขงวด, budget check, เส้นทางอนุมัติตามวงเงิน/ประเภท | กฎเก็บเป็น JSON (เช่น JSONLogic) ADMIN แก้ได้ |
-| Funder Profile | เก็บกติกาของแต่ละแหล่งทุน: หมวดงบ, งวด, แบบฟอร์ม, คืนเงิน, export | รองรับแหล่งทุนที่ยังระบุไม่ได้ด้วยการเพิ่ม config ไม่ต้องแก้โค้ด |
+| Funder Profile | เก็บกติกาของแต่ละแหล่งทุน: หมวดงบ, งวด, แบบฟอร์ม, เกณฑ์ตรวจ CR-04, คืนเงิน, export | รองรับแหล่งทุนที่ยังระบุไม่ได้ด้วยการเพิ่ม config ไม่ต้องแก้โค้ด |
 | Budget Ledger | บัญชีย่อยต่อโครงการ ต่อหมวด: งบ / ผูกพัน / ใช้จริง | MVP: RMS เป็นผู้บันทึก · เฟส 1.5+: ยอดใช้จริงมาจาก SAP |
 | Outbox | เก็บ event ที่จะส่งไป SAP ใน transaction เดียวกับข้อมูล แล้วค่อยส่งแบบ async + retry | กันข้อมูลหายหรือส่งซ้ำ |
 | Integration Layer | แปลง canonical model ↔ SAP | แยก deploy ได้ เปลี่ยน adapter ตอนย้ายไป S/4HANA |
@@ -105,6 +105,9 @@ erDiagram
   PROJECT ||--o{ PROJECT_MEMBER : มี
   PROJECT ||--|| CONTRACT : มี
   CONTRACT ||--o{ CONTRACT_AMENDMENT : แก้ไข
+  PROJECT ||--o{ BUDGET_PLAN : "CR-04 (versioned)"
+  BUDGET_PLAN ||--o{ BUDGET_PLAN_ITEM : รายการ
+  BUDGET_PLAN ||--o{ BUDGET_LINE : "ตั้งงบเมื่อตรวจผ่าน"
   PROJECT ||--o{ BUDGET_LINE : "งบตามหมวด"
   PROJECT ||--o{ INSTALLMENT : แบ่งงวด
   INSTALLMENT ||--o| DISBURSEMENT_REQUEST : เบิก
@@ -221,11 +224,24 @@ erDiagram
 
 ## 3. State Machines
 
+### เอกสารแจกแจงงบประมาณ (CR-04)
+
+```mermaid
+stateDiagram-v2
+  [*] --> Draft: นำเข้าโครงการ → แจ้งนักวิจัย
+  Draft --> PendingRO: PI ส่ง (ผ่านเกณฑ์อัตโนมัติ)
+  PendingRO --> Draft: กองวิจัยส่งกลับ (ระบุเหตุผล)
+  PendingRO --> Approved: กองวิจัยตรวจผ่าน
+  Approved --> [*]: emit event → สร้าง BUDGET_LINE + สร้างสัญญา
+```
+
+> ถ้ายืนยันว่า CR-04 ต้องผ่านคณะด้วย [A12] ให้เพิ่มสถานะ `PendingFaculty` ระหว่าง `Draft` กับ `PendingRO`
+
 ### สัญญา (Contract)
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Draft: ระบบสร้างจาก template
+  [*] --> Draft: ระบบสร้างจาก template (หลัง CR-04 ตรวจผ่าน)
   Draft --> LegalReview: แก้จาก template / ทุนภายนอก
   Draft --> PendingPI: มาตรฐาน
   LegalReview --> PendingPI: ผ่าน
