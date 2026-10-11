@@ -326,11 +326,12 @@ stateDiagram-v2
 | ประเด็น | ECC 6.0 Adapter | S/4HANA Adapter |
 |---|---|---|
 | Protocol | RFC/BAPI (ผ่าน SAP JCo/NCo) หรือ SOAP ผ่าน SAP PI/PO | OData / SOAP APIs มาตรฐาน (ดูรายการใน SAP Business Accelerator Hub) ผ่าน SAP BTP Integration Suite หรือเรียกตรง |
-| Master โครงการ | ✅ **Internal Order (IO)** | ยังไม่ตัดสินใจ (ดูหัวข้อ 4.5) |
-| บันทึกเอกสารบัญชี | เช่น `BAPI_ACC_DOCUMENT_POST` / park ด้วย custom RFC | Journal Entry API |
+| Master โครงการ | ✅ **Internal Order (IO)** | ยังไม่ตัดสินใจ (ดูหัวข้อ 4.5) ถ้าเป็น WBS มี OData `Enterprise Project` / `api_project_v3` ถ้าคง IO **ไม่พบ OData API มาตรฐาน** ต้องใช้ BAPI/RFC หรือ custom OData (รายละเอียดใน [05](05-sap-project-object-research.md) หัวข้อ 2.5, 3.5) |
+| บันทึกเอกสารบัญชี | เช่น `BAPI_ACC_DOCUMENT_POST` / park ด้วย custom RFC | `Journal Entry - Post (Synchronous)` (SOAP) |
 | ใบขอซื้อ | ไม่ใช้ (จัดซื้อผ่าน WOLF → e-GP) | ไม่ใช้ เว้นแต่โครงการ S/4HANA จะย้ายจัดซื้อเข้า MM |
-| ยอดใช้จริง | **ไฟล์ export รายงาน CO ตาม IO** (เช่น รายงาน actual/commitment ต่อ IO) นำเข้า RMS รายวัน/รายสัปดาห์ | CDS view / OData ของ Universal Journal (ACDOCA) |
-| ความเสี่ยง | custom RFC ต้องทิ้งเมื่ออัปเกรด | API บางตัวต้องเปิดใช้งาน / ต้องมี BTP |
+| ยอดใช้จริง | **ไฟล์ export รายงาน CO ตาม IO** (เช่น รายงาน actual/commitment ต่อ IO) นำเข้า RMS รายวัน/รายสัปดาห์ | `Journal Entry Item - Read` (Universal Journal / ACDOCA) ถ้าเป็น WBS มี `Project Commitments` / `Project Budget` เพิ่ม |
+| ยอดผูกพันการจัดซื้อ | ไม่มีใน SAP (อยู่ใน WOLF) | **ยังไม่มีใน SAP** เว้นแต่เปิด FM แล้วบันทึกเป็น earmarked funds (`Earmarked Funds` API) หรือ WOLF ส่ง PO เข้า SAP → RMS ดึงจาก WOLF |
+| ความเสี่ยง | custom RFC ต้องทิ้งเมื่ออัปเกรด | API บางตัวต้องเปิดใช้งาน / ต้องมี BTP ชื่อ API ทุกตัวต้องยืนยันกับ release จริง |
 
 ### 4.4 Pattern การส่งข้อมูล
 
@@ -370,13 +371,17 @@ ECC ปัจจุบันใช้ **Internal Order (IO)** และ S/4HANA 
 
 | ตัวเลือก | เหมาะเมื่อ | ข้อดี | ข้อควรพิจารณา |
 |---|---|---|---|
-| **A. คง Internal Order (CO)** | ต้องการย้ายระบบให้เสี่ยงน้อยที่สุด | migrate ตรงจาก ECC, ผู้ใช้คุ้นเคย, RMS map ง่าย | งบตามหมวดและการคุมงบ (availability control) ทำได้จำกัด รายงานตามแหล่งทุนต้องทำใน RMS หรือ BI |
-| **B. WBS Element (PS)** | โครงการใหญ่ มีหลายระยะหรือหลายกิจกรรมย่อย | มีโครงสร้างหลายระดับ, คุมงบได้ดี, รองรับงบหลายปี | ตั้งค่าและดูแลมากกว่า IO ต้องฝึกผู้ใช้ |
-| **C. Grants Management (PSM-GM) + FM** | มีทุนภายนอกจำนวนมาก ต้องการรายงานตามแหล่งทุน คุมงบตามหมวดของแหล่งทุน | ออกแบบมาเพื่อทุนโดยเฉพาะ (sponsor, sponsored class, งบตามเงื่อนไขแหล่งทุน) | ซับซ้อนที่สุด ใช้เวลาและงบ implement สูง อาจไม่ทัน ต.ค. 2570 |
+| **A. คง Internal Order (CO)** | ย้ายแบบ brownfield บน on-prem/Private และต้องการเสี่ยงน้อยที่สุด | migrate ตรงจาก ECC, ผู้ใช้คุ้นเคย, RMS map ง่าย | คุมงบได้ระดับ IO เท่านั้น (ไม่แยกหมวด) **ไม่มีใน S/4HANA Public Cloud** ไม่พบ OData API สร้าง IO รายงานตามแหล่งทุนต้องทำใน RMS หรือ BI |
+| **B. WBS Element (PS / Enterprise Project)** | greenfield หรือ Public Cloud หรือต้องการ API มาตรฐาน | มี OData สร้าง project/WBS และอ่าน commitment/budget, รองรับงบหลายปี, เป็นฐานที่ GM ผูกด้วย | คุมงบได้ระดับ WBS เท่านั้น **ไม่แยกหมวดดีกว่า IO** ไม่มีเครื่องมือแปลง IO → WBS ตั้งค่าและฝึกผู้ใช้มากกว่า IO |
+| **C. Grants Management (PSM-GM) + FM** | มีทุนภายนอกจำนวนมาก ต้องคุมงบตามหมวดของแหล่งทุน **ใน SAP** | ทางเลือกเดียวที่คุมงบตามหมวดของแหล่งทุนได้ในตัว (sponsored class × budget validity) มี IDC, billing, earmarked funds สำหรับยอดผูกพันนอก MM | ซับซ้อนที่สุด เป็น implement ใหม่ ไม่พบ API สร้าง grant (ใช้ BAPI) ควรเปิด FM ต้นปีงบประมาณ อาจไม่ทัน ต.ค. 2570 |
+
+> ผลค้นคว้าพร้อมแหล่งอ้างอิง: [05-sap-project-object-research.md](05-sap-project-object-research.md)
 
 **ความเห็นเบื้องต้น** 🟡 (ต้องให้ทีม S/4HANA และกองคลังประเมินร่วมกัน)
-- ถ้าเวลาและงบของโครงการ S/4HANA จำกัด → **A (คง IO)** แล้วให้ RMS เป็นผู้คุมงบตามหมวดและทำรายงานตามแหล่งทุน
-- ถ้าทุนภายนอกเป็นสัดส่วนใหญ่และต้องคุมงบใน SAP → พิจารณา **C** แต่อาจทำเป็นระยะที่ 2 หลัง go-live
+- **ไม่ว่าจะเลือก A หรือ B, RMS ต้องเป็นผู้คุมงบตามหมวดและทำรายงานตามแหล่งทุน** เพราะทั้งสองคุมงบได้แค่ระดับวัตถุ
+- go-live ต.ค. 2570 → **B (WBS ระดับเดียวต่อโครงการ)** เป็นค่าแนะนำหลัก ยกเว้น brownfield บน on-prem/Private ที่ไม่มีกำลัง redesign → **A (คง IO)**
+- ถ้าทุนภายนอกเป็นสัดส่วนใหญ่และต้องคุมงบใน SAP → **C** เป็นระยะที่ 2 (เปิดต้นปีงบประมาณ เร็วสุด 1 ต.ค. 2571) ยกเว้นทีม S/4HANA มีแผนเปิด FM ตั้งแต่ go-live อยู่แล้ว
+- คำถามที่ต้องได้คำตอบก่อน: รุ่น S/4HANA (on-prem / Private / Public Cloud), brownfield หรือ greenfield, และแผนเปิด FM (รายการคำถามเต็มใน 05 หัวข้อ 8)
 - **RMS ออกแบบให้รองรับได้ทุกตัวเลือก:** ใช้ `SAP_LINK.object_type` และตาราง mapping หมวดงบ ↔ cost element ทำให้เปลี่ยนเฉพาะ adapter ไม่ต้องแก้ core
 
 ### 4.6 แผนเวลาเทียบกับการย้ายไป S/4HANA
