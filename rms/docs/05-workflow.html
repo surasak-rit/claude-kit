@@ -1,0 +1,1289 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RMS Workflow Swimlane</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f8fafc; --fg:#0f172a; --muted:#64748b; --card:#ffffff; --line:#e2e8f0;
+    --lane-a:#ffffff; --lane-b:#f1f5f9; --lane-head:#e2e8f0; --edge:#475569;
+    --human-bg:#dcfce7; --human-bd:#16a34a; --human-fg:#14532d;
+    --auto-bg:#dbeafe; --auto-bd:#2563eb; --auto-fg:#1e3a8a;
+    --ext-bg:#ffedd5; --ext-bd:#ea580c; --ext-fg:#7c2d12;
+    --dec-bg:#ede9fe; --dec-bd:#7c3aed; --dec-fg:#3b0764;
+    --todo-bg:#f3f4f6; --todo-bd:#9ca3af; --todo-fg:#374151;
+    --label-bg:#f8fafc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#0b1220; --fg:#e2e8f0; --muted:#94a3b8; --card:#111827; --line:#1f2937;
+      --lane-a:#0f172a; --lane-b:#111c2e; --lane-head:#1e293b; --edge:#94a3b8;
+      --human-bg:#052e16; --human-bd:#22c55e; --human-fg:#bbf7d0;
+      --auto-bg:#172554; --auto-bd:#60a5fa; --auto-fg:#dbeafe;
+      --ext-bg:#431407; --ext-bd:#f97316; --ext-fg:#fed7aa;
+      --dec-bg:#2e1065; --dec-bd:#a78bfa; --dec-fg:#ede9fe;
+      --todo-bg:#1f2937; --todo-bd:#6b7280; --todo-fg:#d1d5db;
+      --label-bg:#0b1220;
+    }
+  }
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-family:"IBM Plex Sans Thai",system-ui,sans-serif; display:flex; flex-direction:column; }
+  header { padding:12px 16px; border-bottom:1px solid var(--line); background:var(--card); display:flex; flex-wrap:wrap; gap:10px 24px; align-items:center; justify-content:space-between; }
+  h1 { font-size:17px; margin:0; }
+  .legend { display:flex; flex-wrap:wrap; gap:6px 16px; font-size:13px; color:var(--muted); }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .sw { width:14px; height:14px; border-radius:3px; border:1.5px solid; display:inline-block; }
+  .tools { display:flex; gap:6px; }
+  button { font:inherit; font-size:13px; padding:4px 10px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); cursor:pointer; }
+  button:hover { filter:brightness(0.96); }
+  #main { flex:1; display:flex; min-height:0; }
+  #scroller { flex:1; overflow:auto; }
+  #panel { width:380px; flex:none; border-left:1px solid var(--line); background:var(--card); overflow:auto; padding:16px 18px 24px; display:none; }
+  #panel.open { display:block; }
+  #panel .top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  #panel .lane-tag { font-size:12px; color:var(--muted); margin-bottom:4px; }
+  #panel h2 { font-size:18px; margin:0 0 8px; line-height:1.4; }
+  #panel .note { font-size:14px; color:var(--muted); margin:0 0 10px; }
+  #panel dl { margin:8px 0 0; display:grid; grid-template-columns:auto 1fr; gap:8px 12px; font-size:14px; line-height:1.5; }
+  #panel dt { color:var(--muted); white-space:nowrap; }
+  #panel dd { margin:0; }
+  #panel ol, #panel ul { margin:4px 0 0; padding-left:20px; }
+  #panel h3 { font-size:13px; color:var(--muted); margin:18px 0 6px; font-weight:600; }
+  #panel .links { display:flex; flex-direction:column; gap:6px; }
+  #panel .links button { text-align:left; display:flex; gap:8px; align-items:baseline; }
+  #panel .links small { color:var(--muted); }
+  #panel .actions { display:flex; gap:6px; margin-top:16px; }
+  .pending { display:inline-block; font-size:12px; padding:1px 8px; border-radius:999px; border:1px dashed var(--todo-bd); background:var(--todo-bg); color:var(--todo-fg); }
+  #chart.has-sel .node:not(.on), #chart.has-sel .edge:not(.on) { opacity:.18; }
+  #chart .node.sel rect, #chart .node.sel polygon { stroke-width:3.5; }
+  #chart .edge.on path { stroke-width:2.5; }
+  @media (max-width:720px) {
+    #panel { position:fixed; left:0; right:0; bottom:0; width:auto; max-height:55vh; border-left:0; border-top:1px solid var(--line); box-shadow:0 -8px 24px rgba(0,0,0,.15); z-index:5; }
+  }
+  #stage { display:flex; width:max-content; }
+  #lanes { position:sticky; left:0; z-index:2; flex:none; width:170px; background:var(--lane-head); box-shadow:2px 0 4px rgba(0,0,0,.08); }
+  .lane { display:flex; align-items:center; padding:0 12px; font-size:13px; font-weight:600; line-height:1.3; border-bottom:2px solid var(--bg); overflow:hidden; }
+  #scroller { cursor:grab; touch-action:none; }
+  #scroller.drag { cursor:grabbing; user-select:none; }
+  .node { cursor:zoom-in; }
+  .node:hover rect, .node:hover polygon { stroke-width:3; }
+  #zlevel { min-width:52px; text-align:center; font-size:13px; color:var(--muted); align-self:center; font-variant-numeric:tabular-nums; }
+  .hint { font-size:12px; color:var(--muted); }
+  #tip { position:fixed; z-index:10; pointer-events:none; background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:10px 14px; font-size:18px; line-height:1.45; box-shadow:0 6px 24px rgba(0,0,0,.18); display:none; max-width:360px; }
+  #tip small { display:block; font-size:12px; color:var(--muted); margin-bottom:2px; }
+  svg text { font-family:"IBM Plex Sans Thai",system-ui,sans-serif; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Workflow — ระบบบริหารจัดการเงินทุนวิจัย (RMS)</h1>
+  <div class="legend">
+    <span><i class="sw" style="background:var(--auto-bg);border-color:var(--auto-bd)"></i>ระบบทำอัตโนมัติ</span>
+    <span><i class="sw" style="background:var(--human-bg);border-color:var(--human-bd)"></i>คนทำผ่านระบบ</span>
+    <span><i class="sw" style="background:var(--ext-bg);border-color:var(--ext-bd)"></i>ระบบภายนอก (MUReX, e-Office)</span>
+    <span><i class="sw" style="background:var(--dec-bg);border-color:var(--dec-bd);transform:rotate(45deg) scale(.8)"></i>จุดตัดสินใจ / อนุมัติ</span>
+    <span><i class="sw" style="background:var(--todo-bg);border-color:var(--todo-bd);border-style:dashed;border-radius:7px"></i>รอระบุ</span>
+  </div>
+  <div class="hint">Ctrl + ล้อเมาส์ = ซูม · ลากเพื่อเลื่อน · คลิกกล่อง = ซูม + ดูรายละเอียด · คลิกซ้ำ = ปิด · คีย์ + − 0 1 Esc</div>
+  <div class="tools">
+    <button id="zout" aria-label="ซูมออก">−</button><span id="zlevel">100%</span><button id="zin" aria-label="ซูมเข้า">+</button><button id="zfit">พอดีจอ</button><button id="z100">100%</button><button id="z200">200%</button>
+  </div>
+</header>
+<div id="main">
+  <div id="scroller"><div id="stage"><div id="lanes"></div><svg id="chart"></svg></div></div>
+  <aside id="panel" aria-live="polite"></aside>
+</div>
+<div id="tip"></div>
+
+<script>
+// ---------- ข้อมูล: แก้ตรงนี้เมื่อ workflow เปลี่ยน ----------
+const LANES = [
+  ["FUND",   "🏦 แหล่งทุน"],
+  ["PI",     "👤 นักวิจัย"],
+  ["RO",     "🏢 จนท. กบจ"],
+  ["FAC",    "🏛️ จนท. วิจัย ส่วนงาน"],
+  ["TBD",    "❔ ผู้ทำ รอระบุ"],
+  ["VP",     "✍️ รองวิจัย"],
+  ["FIN",    "💰 จนท. กองคลัง"],
+  ["MU",     "🏫 มหาวิทยาลัย"],
+  ["SYS",    "⚙️ ระบบ RDS"],
+  ["HR",     "👥 HR ส่วนงาน"],
+  ["BUD",    "💰 กองคลัง · งานงบ"],
+  ["CASH",   "💰 กองคลัง · งานการเงิน"],
+  ["ACC",    "💰 กองคลัง · งานบัญชี"],
+  ["UNIT",   "🏛️ จนท. คลังส่วนงาน"],
+  ["FACFIN", "🏛️ คลังคณะ"],
+];
+
+// [id, lane, col, row-in-lane, type, text]   type: human | auto | ext | dec | decext | todo
+const NODES = [
+  ["m1","PI",0,0,"ext","1. สร้าง application\n🟧 MUReX"],
+  ["m2","RO",1,0,"ext","2. สร้าง award ของ\napplication ที่ได้รับทุน\n🟧 MUReX"],
+  ["r1","RO",2,0,"human","3. ดึงข้อมูล\napplication + award\nเข้า RDS"],
+  ["r2","PI",3,0,"human","4. สร้าง CR-04\nเอกสารแจกแจงงบ"],
+  ["r3","FAC",4,0,"human","5. ตรวจสอบเอกสาร"],
+  ["r4","RO",5,0,"human","6. ตรวจสอบเอกสาร"],
+  ["r5","FIN",6,0,"human","7. ตรวจสอบเอกสาร"],
+  ["d1","TBD",7,0,"dec","8. แหล่งทุน\nภายนอก?"],
+  ["d2","TBD",8,0,"dec","ขอเบิกเงินยืม\nกองทุนหมุนเวียน?"],
+  ["l1","RO",9,0,"human","8.1 ทำหนังสือขออนุมัติ\nเบิกเงินยืม\nกองทุนหมุนเวียน"],
+  ["t1","FUND",8,0,"ext","แจ้งโอนเงิน\n(trigger เบิกเงินงวด\n+ Payroll)"],
+  ["i1","RO",9,1,"human","8.5 ทำหนังสือขออนุมัติ\nเบิกจ่ายเงินงวด"],
+  ["l2","VP",10,0,"decext","8.2 อนุมัติ\nเบิกเงินยืม\n🟧 e-Office"],
+  ["i2","VP",10,1,"decext","8.6 อนุมัติ\nเบิกเงินงวด\n🟧 e-Office"],
+  ["l3","FIN",11,0,"human","8.3 เบิกจ่ายเงิน\nจากกองทุนหมุนเวียน"],
+  ["i3","FIN",11,1,"human","8.7 เบิกจ่ายเงินงวด"],
+  ["l4","FIN",12,0,"human","8.4 ตั้งลูกหนี้"],
+  ["n2","FIN",13,0,"todo","รอระบุ"],
+  ["f0","MU",12,0,"human","9. หักเงินหมวด AP\nเพื่อจ่ายผ่าน Payroll"],
+  ["a1","SYS",13,0,"auto","9.1 แจ้ง HR ส่วนงาน\nให้รัน Payroll"],
+  ["h1","HR",14,0,"human","9.2 รันกระบวนการ\nจ่ายเงินผ่าน Payroll"],
+  ["n8","HR",15,0,"todo","รอระบุ"],
+  ["f1","BUD",13,0,"human","10. ส่งกรอบงบประมาณ"],
+  ["f2","CASH",14,0,"human","11. ออกใบเสร็จรับเงิน"],
+  ["f3","ACC",15,0,"human","12. ด้านรับเงิน\nรับรู้รายได้จากแหล่งทุน"],
+  ["f4","ACC",16,0,"dec","13. ด้านจ่ายเงิน\nมียืมเงิน?"],
+  ["f6","ACC",17,1,"human","13.1 หักเงินโอนจาก\nแหล่งทุนเพื่อล้างหนี้"],
+  ["fp","ACC",18,0,"human","14. จ่ายเงิน"],
+  ["f5","CASH",19,0,"human","15. โอนเงินเข้า\nบัญชีส่วนงาน"],
+  ["u1","UNIT",20,0,"human","16. รับเงินงบดำเนินการ\nโครงการ ลงบัญชี"],
+  ["g1","PI",21,0,"human","17. ขอใช้เงิน"],
+  ["g2","FACFIN",22,1,"dec","18. ทำเรื่องเบิกจ่าย\nประเภทไหน?"],
+  ["g3","FACFIN",23,0,"human","18.1 ยืมเงินจากคณะ"],
+  ["g4","FACFIN",23,1,"human","18.2 เบิกจ่ายตามจริง"],
+  ["g5","FACFIN",23,2,"human","18.3 เบิกทั้งก้อนเงินงวด\nนักวิจัยบริหารจัดการเอง"],
+  ["n5","FACFIN",24,0,"todo","รอระบุ"],
+  ["n6","FACFIN",24,1,"todo","รอระบุ"],
+  ["n7","FACFIN",24,2,"todo","รอระบุ"],
+];
+
+// [from, to, label, dashed]
+const EDGES = [
+  ["m1","m2"], ["m2","r1","application\n+ award",true],
+  ["r1","r2"], ["r2","r3"], ["r3","r4"], ["r4","r5"], ["r5","d1"],
+  ["d1","d2","ใช่"], ["d1","i1","ไม่ใช่"],
+  ["d2","l1","ขอยืม"], ["d2","i1","ไม่ขอยืม"],
+  ["l1","l2"], ["l2","l3","อนุมัติ"], ["l3","l4"], ["l4","n2"],
+  ["t1","i1","แจ้ง กบจ",true], ["i1","i2"], ["i2","i3","อนุมัติ"],
+  ["t1","a1","",true], ["a1","h1"], ["h1","n8"],
+  ["i3","f0"], ["f0","f1"], ["f1","f2"], ["f2","f3"], ["f3","f4"],
+  ["f4","fp","ไม่มียืม"], ["f4","f6","มียืม"], ["f6","fp","ยอดเหลือ"], ["fp","f5"],
+  ["f5","u1"], ["u1","g1"], ["g1","g2"],
+  ["g2","g3","ยืม"], ["g2","g4","ตามจริง"], ["g2","g5","ทั้งก้อน"],
+  ["g3","n5"], ["g4","n6"], ["g5","n7"],
+];
+
+// <DETAILS> สร้างจากหัวข้อของแต่ละขั้นใน 05-workflow.md
+const DETAILS = {
+ "1": {
+  "title": "นักวิจัยสร้าง application",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "นักวิจัย",
+    []
+   ],
+   [
+    "ระบบ",
+    "MUReX (ภายนอก)",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "application ของโครงการวิจัย",
+    []
+   ]
+  ]
+ },
+ "2": {
+  "title": "จนท. กบจ สร้าง award",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "จนท. กบจ",
+    []
+   ],
+   [
+    "ระบบ",
+    "MUReX (ภายนอก)",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "award ของ application ที่ได้รับทุน",
+    []
+   ]
+  ]
+ },
+ "3": {
+  "title": "ดึงข้อมูล application + award เข้า RDS",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "จนท. กบจ",
+    []
+   ],
+   [
+    "ระบบ",
+    "MUReX → RDS",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "โครงการใน RDS พร้อมข้อมูล application และ award",
+    []
+   ]
+  ]
+ },
+ "4": {
+  "title": "นักวิจัยสร้าง CR-04",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "นักวิจัย",
+    []
+   ],
+   [
+    "ระบบ",
+    "RDS",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "เอกสารแจกแจงงบ CR-04",
+    []
+   ]
+  ]
+ },
+ "5": {
+  "title": "จนท. วิจัย ส่วนงาน ตรวจสอบเอกสาร",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "จนท. วิจัย ส่วนงาน",
+    []
+   ],
+   [
+    "ระบบ",
+    "RDS",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "เอกสารผ่านการตรวจระดับส่วนงาน",
+    []
+   ]
+  ]
+ },
+ "6": {
+  "title": "จนท. กบจ ตรวจสอบเอกสาร",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "จนท. กบจ",
+    []
+   ],
+   [
+    "ระบบ",
+    "RDS",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "เอกสารผ่านการตรวจของ กบจ",
+    []
+   ]
+  ]
+ },
+ "7": {
+  "title": "จนท. กองคลัง ตรวจสอบเอกสาร",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "จนท. กองคลัง",
+    []
+   ],
+   [
+    "ระบบ",
+    "RDS",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "เอกสารผ่านการตรวจของกองคลัง",
+    []
+   ]
+  ]
+ },
+ "8": {
+  "title": "◇ แหล่งทุนภายนอก — ตรวจการขอเบิกเงินยืมกองทุนหมุนเวียน",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ระบบ",
+    "RDS",
+    []
+   ],
+   [
+    "เงื่อนไข",
+    "ถ้าเป็นแหล่งทุนภายนอก ให้ตรวจว่าขอเบิกเงินยืมกองทุนหมุนเวียนหรือไม่",
+    [
+     "ขอยืม → 8.1",
+     "ไม่ขอยืม → 8.5",
+     "ไม่ใช่แหล่งทุนภายนอก → 8.5"
+    ]
+   ]
+  ]
+ },
+ "8.1": {
+  "title": "จนท. กบจ ทำหนังสือขออนุมัติเบิกจ่าย",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "จนท. กบจ",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "หนังสือขออนุมัติเบิกจ่ายเงินยืมกองทุนหมุนเวียน เสนอรองวิจัย",
+    []
+   ]
+  ]
+ },
+ "8.2": {
+  "title": "รองวิจัยอนุมัติเบิกจ่าย",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "รองวิจัย",
+    []
+   ],
+   [
+    "ระบบ",
+    "e-Office (ภายนอก)",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "อนุมัติเบิกจ่าย",
+    []
+   ]
+  ]
+ },
+ "8.3": {
+  "title": "จนท. กองคลัง เบิกจ่ายเงินจากกองทุนหมุนเวียน",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "จนท. กองคลัง",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "จ่ายเงินยืมจากกองทุนหมุนเวียน",
+    []
+   ]
+  ]
+ },
+ "8.4": {
+  "title": "จนท. กองคลัง ตั้งลูกหนี้",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "จนท. กองคลัง",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "ลูกหนี้เงินยืมกองทุนหมุนเวียน",
+    []
+   ],
+   [
+    "ถัดไป",
+    "_(รอระบุ)_",
+    []
+   ]
+  ]
+ },
+ "8.5": {
+  "title": "จนท. กบจ ทำหนังสือขออนุมัติเบิกจ่ายเงินงวด",
+  "note": "กรณีไม่ใช่แหล่งทุนภายนอก หรือแหล่งทุนภายนอกที่ไม่ขอยืม",
+  "fields": [
+   [
+    "Trigger",
+    "จนท. กบจ ได้รับแจ้งโอนเงินจากแหล่งทุน (trigger เดียวกับ 9.1)",
+    []
+   ],
+   [
+    "ผู้ทำ",
+    "จนท. กบจ",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "หนังสือขออนุมัติเบิกจ่ายเงินงวด เสนอรองวิจัย",
+    []
+   ]
+  ]
+ },
+ "8.6": {
+  "title": "รองวิจัยอนุมัติเบิกจ่าย",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "รองวิจัย",
+    []
+   ],
+   [
+    "ระบบ",
+    "e-Office (ภายนอก)",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "อนุมัติเบิกจ่ายเงินงวด",
+    []
+   ]
+  ]
+ },
+ "8.7": {
+  "title": "จนท. กองคลัง เบิกจ่ายเงินงวด",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "จนท. กองคลัง",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "จ่ายเงินงวด",
+    []
+   ],
+   [
+    "ถัดไป",
+    "9",
+    []
+   ]
+  ]
+ },
+ "9": {
+  "title": "มหาวิทยาลัยหักเงินหมวด AP เพื่อจ่ายผ่าน Payroll",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "มหาวิทยาลัย",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "หักเงินหมวด AP เพื่อจ่ายผ่าน Payroll",
+    []
+   ]
+  ]
+ },
+ "9.1": {
+  "title": "⚙️ ระบบแจ้ง HR ส่วนงาน",
+  "note": "",
+  "fields": [
+   [
+    "Trigger",
+    "ได้รับแจ้งโอนเงินจากแหล่งทุน (trigger เดียวกับ 8.5)",
+    []
+   ],
+   [
+    "ผู้ทำ",
+    "ระบบ RDS (อัตโนมัติ)",
+    []
+   ],
+   [
+    "ระบบ",
+    "RDS",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "แจ้ง HR ส่วนงานให้รันกระบวนการจ่ายเงินผ่าน Payroll",
+    []
+   ]
+  ]
+ },
+ "9.2": {
+  "title": "HR ส่วนงาน รันกระบวนการจ่ายเงินผ่าน Payroll",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "HR ส่วนงาน",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "จ่ายเงินผ่าน Payroll",
+    []
+   ],
+   [
+    "ถัดไป",
+    "_(รอระบุ)_",
+    []
+   ]
+  ]
+ },
+ "10": {
+  "title": "จนท. งานงบ กองคลัง ส่งกรอบงบประมาณ",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "จนท. งานงบ กองคลัง",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "การดำเนินการ",
+    "",
+    [
+     "สร้าง IO8",
+     "สร้างใบ Supplement งบ",
+     "สร้างใบจองงบ"
+    ]
+   ],
+   [
+    "ผลลัพธ์",
+    "กรอบงบประมาณ",
+    []
+   ]
+  ]
+ },
+ "11": {
+  "title": "จนท. งานการเงิน กองคลัง ออกใบเสร็จรับเงิน",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "จนท. งานการเงิน กองคลัง",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "การดำเนินการ",
+    "",
+    [
+     "สร้างใบเสร็จรับเงิน"
+    ]
+   ],
+   [
+    "ผลลัพธ์",
+    "ใบเสร็จรับเงิน",
+    []
+   ]
+  ]
+ },
+ "12": {
+  "title": "จนท. งานบัญชี กองคลัง ด้านรับเงิน รับรู้รายได้จากแหล่งทุน",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "จนท. งานบัญชี กองคลัง ด้านรับเงิน",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "การดำเนินการ",
+    "",
+    [
+     "ออกใบสำคัญรับเงิน (RV) หรือใบสำคัญทั่วไป (JV)"
+    ]
+   ],
+   [
+    "ผลลัพธ์",
+    "บันทึกรับรู้รายได้จากแหล่งทุน",
+    []
+   ]
+  ]
+ },
+ "13": {
+  "title": "◇ จนท. งานบัญชี กองคลัง ด้านจ่ายเงิน ตรวจสอบการยืมเงิน",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "จนท. งานบัญชี กองคลัง ด้านจ่ายเงิน",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "เงื่อนไข",
+    "ตรวจสอบว่ามียืมเงินหรือไม่",
+    [
+     "ไม่มียืม → 14",
+     "มียืม → 13.1"
+    ]
+   ]
+  ]
+ },
+ "13.1": {
+  "title": "หักเงินโอนจากแหล่งทุนเพื่อล้างหนี้",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "จนท. งานบัญชี กองคลัง ด้านจ่ายเงิน",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "หักเงินที่แหล่งทุนโอนมาเพื่อล้างหนี้เงินยืม (ลูกหนี้จากขั้น 8.4)",
+    []
+   ],
+   [
+    "ถัดไป",
+    "ยอดเหลือส่งไปขั้น 14",
+    []
+   ]
+  ]
+ },
+ "14": {
+  "title": "จนท. งานบัญชี กองคลัง จ่ายเงิน",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "จนท. งานบัญชี กองคลัง",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ถัดไป",
+    "15",
+    []
+   ]
+  ]
+ },
+ "15": {
+  "title": "จนท. งานการเงิน กองคลัง โอนเงินเข้าบัญชีส่วนงาน",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "จนท. งานการเงิน กองคลัง",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "เงินเข้าบัญชีส่วนงาน",
+    []
+   ],
+   [
+    "ถัดไป",
+    "16",
+    []
+   ]
+  ]
+ },
+ "16": {
+  "title": "จนท. คลังส่วนงาน รับเงินงบดำเนินการโครงการลงบัญชี",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "จนท. คลังส่วนงาน",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "บันทึกรับเงินงบดำเนินการโครงการเข้าบัญชีส่วนงาน",
+    []
+   ],
+   [
+    "ถัดไป",
+    "17",
+    []
+   ]
+  ]
+ },
+ "17": {
+  "title": "นักวิจัยขอใช้เงิน",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "นักวิจัย",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "คำขอใช้เงิน",
+    []
+   ],
+   [
+    "ถัดไป",
+    "18",
+    []
+   ]
+  ]
+ },
+ "18": {
+  "title": "◇ คลังคณะทำเรื่องเบิกจ่ายเงิน",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "คลังคณะ",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "เงื่อนไข",
+    "แยกตามประเภทการเบิกจ่าย 3 ประเภท",
+    [
+     "ยืมเงินจากคณะ → 18.1",
+     "เบิกจ่ายตามจริง → 18.2",
+     "เบิกทั้งก้อนเงินงวดไปบริหารจัดการเองโดยนักวิจัย → 18.3"
+    ]
+   ]
+  ]
+ },
+ "18.1": {
+  "title": "ยืมเงินจากคณะ",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "คลังคณะ",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ถัดไป",
+    "_(รอระบุ)_",
+    []
+   ]
+  ]
+ },
+ "18.2": {
+  "title": "เบิกจ่ายตามจริง",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "คลังคณะ",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ถัดไป",
+    "_(รอระบุ)_",
+    []
+   ]
+  ]
+ },
+ "18.3": {
+  "title": "เบิกทั้งก้อนเงินงวด ให้นักวิจัยบริหารจัดการเอง",
+  "note": "",
+  "fields": [
+   [
+    "ผู้ทำ",
+    "คลังคณะ",
+    []
+   ],
+   [
+    "ระบบ",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ผลลัพธ์",
+    "_(รอระบุ)_",
+    []
+   ],
+   [
+    "ถัดไป",
+    "_(รอระบุ)_",
+    []
+   ]
+  ]
+ }
+};
+// </DETAILS>
+
+// ---------- layout ----------
+const LANE_W = 190, COL_W = 280, NODE_W = 160, NODE_H = 64, DEC_W = 150, DEC_H = 84,
+      TODO_W = 90, TODO_H = 34, ROW_H = 116, LANE_PAD = 14, TOP = 0, TRACK = 9, R = 7;
+
+const laneIdx = Object.fromEntries(LANES.map(([k], i) => [k, i]));
+const rowsPerLane = LANES.map(([k]) =>
+  1 + Math.max(0, ...NODES.filter(n => n[1] === k).map(n => n[3])));
+const laneY = [];
+let acc = TOP;
+rowsPerLane.forEach((r, i) => { laneY[i] = acc; acc += r * ROW_H + LANE_PAD * 2; });
+const H = acc, nCols = 1 + Math.max(...NODES.map(n => n[2])), W = nCols * COL_W + 40;
+
+const node = {};
+for (const [id, lane, col, row, type, text] of NODES) {
+  const li = laneIdx[lane];
+  const [w, h] = type === "decext" ? [DEC_W + 20, DEC_H + 16] : type === "dec" ? [DEC_W, DEC_H] : type === "todo" ? [TODO_W, TODO_H]
+    : [NODE_W, Math.max(NODE_H, text.split("\n").length * 17 + 14)];
+  const cx = 20 + col * COL_W + NODE_W / 2;
+  const cy = laneY[li] + LANE_PAD + row * ROW_H + ROW_H / 2;
+  node[id] = { id, type, text, col, cx, cy, w, h, ins: [] };
+}
+
+// กระจายจุดเข้าเมื่อมีหลายเส้นเข้ากล่องเดียวกัน
+EDGES.forEach((e, i) => node[e[1]].ins.push(i));
+const entryY = {};
+for (const n of Object.values(node)) {
+  const k = n.ins.length, span = Math.min(n.h * 0.5, 16 * (k - 1));
+  n.ins.sort((a, b) => node[EDGES[a][0]].cy - node[EDGES[b][0]].cy)
+       .forEach((ei, j) => entryY[ei] = n.cy + (k > 1 ? -span / 2 + span * j / (k - 1) : 0));
+}
+
+// แบ่ง track ในช่องว่างระหว่างคอลัมน์ ไม่ให้เส้นแนวตั้งทับกัน (เส้นจากต้นทางเดียวกันใช้ track ร่วม)
+const gutterSrc = {};
+EDGES.forEach(([a]) => {
+  const g = node[a].col;
+  (gutterSrc[g] ||= []);
+  if (!gutterSrc[g].includes(a)) gutterSrc[g].push(a);
+});
+function trackX(a) {
+  const g = node[a].col, list = gutterSrc[g], k = list.length, j = list.indexOf(a);
+  const mid = 20 + g * COL_W + NODE_W + (COL_W - NODE_W) / 2;
+  return mid + (j - (k - 1) / 2) * TRACK * 2;
+}
+
+function elbow(pts) {
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [px, py] = pts[i - 1], [x, y] = pts[i], [nx, ny] = pts[i + 1];
+    const r = Math.min(R, Math.abs(x - px || y - py) / 2, Math.abs(nx - x || ny - y) / 2);
+    const ax = x - Math.sign(x - px) * r, ay = y - Math.sign(y - py) * r;
+    const bx = x + Math.sign(nx - x) * r, by = y + Math.sign(ny - y) * r;
+    d += ` L${ax},${ay} Q${x},${y} ${bx},${by}`;
+  }
+  const [lx, ly] = pts[pts.length - 1];
+  return d + ` L${lx},${ly}`;
+}
+
+function stepNo(text) {
+  const m = /^(\d+(?:\.\d+)?)[.\s]/.exec(text);
+  return m ? m[1] : null;
+}
+
+// ---------- render ----------
+const NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs = {}, parent) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+};
+function multiline(parent, text, x, y, size, fill, weight = 400) {
+  const lines = text.split("\n"), lh = size * 1.35;
+  const t = el("text", { x, y: y - (lines.length - 1) * lh / 2, "text-anchor": "middle",
+    "dominant-baseline": "middle", "font-size": size, fill, "font-weight": weight }, parent);
+  lines.forEach((s, i) => { const ts = el("tspan", { x, dy: i ? lh : 0 }, t); ts.textContent = s; });
+  return t;
+}
+
+const chart = document.getElementById("chart"), lanesBox = document.getElementById("lanes");
+chart.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+const defs = el("defs", {}, chart);
+const mk = el("marker", { id: "arr", viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto-start-reverse" }, defs);
+el("path", { d: "M0,0 L10,5 L0,10 z", fill: "var(--edge)" }, mk);
+
+LANES.forEach(([, name], i) => {
+  const y = laneY[i], h = rowsPerLane[i] * ROW_H + LANE_PAD * 2;
+  el("rect", { x: 0, y, width: W, height: h, fill: i % 2 ? "var(--lane-b)" : "var(--lane-a)" }, chart);
+  el("line", { x1: 0, x2: W, y1: y + h, y2: y + h, stroke: "var(--line)" }, chart);
+  const d = document.createElement("div");
+  d.className = "lane"; d.textContent = name; d.dataset.h = h;
+  lanesBox.appendChild(d);
+});
+
+const edgeLayer = el("g", { fill: "none", stroke: "var(--edge)", "stroke-width": 1.5 }, chart);
+const labelLayer = el("g", {}, chart);
+EDGES.forEach(([a, b, label, dashed], i) => {
+  const s = node[a], t = node[b];
+  const x1 = s.cx + s.w / 2, y1 = s.cy, x2 = t.cx - t.w / 2, y2 = entryY[i];
+  const tx = trackX(a);
+  const pts = Math.abs(y1 - y2) < 0.5 ? [[x1, y1], [x2, y2]] : [[x1, y1], [tx, y1], [tx, y2], [x2, y2]];
+  const eg = el("g", { class: "edge", "data-a": a, "data-b": b }, edgeLayer);
+  el("path", { d: elbow(pts), "marker-end": "url(#arr)", ...(dashed ? { "stroke-dasharray": "5 4" } : {}) }, eg);
+  if (label) {
+    const lines = label.split("\n"), straight = pts.length === 2;
+    // เส้นหักมุมที่มีช่วงแนวตั้งยาว: วางป้ายข้างช่วงแนวตั้ง ไม่ให้ไปทับเส้นอื่นที่เข้ากล่องเดียวกัน
+    const onVertical = !straight && Math.abs(y1 - y2) >= 40;
+    const lx = straight ? (x1 + x2) / 2 : tx + 6;
+    const ly = onVertical ? (y1 + y2) / 2 - (lines.length - 1) * 7.5 : y2 - 7 - (lines.length - 1) * 15;
+    const txt = el("text", { x: lx, y: ly, "font-size": 12, fill: "var(--muted)",
+      "text-anchor": straight ? "middle" : "start", "paint-order": "stroke",
+      stroke: "var(--label-bg)", "stroke-width": 4, class: "edge", "data-a": a, "data-b": b }, labelLayer);
+    lines.forEach((s, j) => { const ts = el("tspan", { x: lx, dy: j ? 15 : 0 }, txt); ts.textContent = s; });
+  }
+});
+
+const nodeLayer = el("g", {}, chart);
+for (const n of Object.values(node)) {
+  const g = el("g", { class: "node", "data-id": n.id }, nodeLayer);
+  const x = n.cx - n.w / 2, y = n.cy - n.h / 2;
+  if (n.type === "dec" || n.type === "decext") {
+    const c = n.type === "decext" ? "ext" : "dec";
+    el("polygon", { points: `${n.cx},${y} ${x + n.w},${n.cy} ${n.cx},${y + n.h} ${x},${n.cy}`,
+      fill: `var(--${c}-bg)`, stroke: `var(--${c}-bd)`, "stroke-width": 1.5 }, g);
+    multiline(g, n.text, n.cx, n.cy, 12, `var(--${c}-fg)`);
+  } else if (n.type === "todo") {
+    el("rect", { x, y, width: n.w, height: n.h, rx: n.h / 2, fill: "var(--todo-bg)", stroke: "var(--todo-bd)",
+      "stroke-dasharray": "4 3", "stroke-width": 1.5 }, g);
+    multiline(g, n.text, n.cx, n.cy, 12, "var(--todo-fg)");
+  } else {
+    const c = n.type === "ext" || n.type === "auto" ? n.type : "human";
+    el("rect", { x, y, width: n.w, height: n.h, rx: 8, fill: `var(--${c}-bg)`, stroke: `var(--${c}-bd)`, "stroke-width": 1.5 }, g);
+    multiline(g, n.text, n.cx, n.cy, 12.5, `var(--${c}-fg)`);
+  }
+  const det = DETAILS[stepNo(n.text)];
+  const tasks = det && det.fields.find(f => f[0] === "การดำเนินการ");
+  if (tasks && tasks[2].length) {
+    const bx = n.cx + n.w / 2 - 6, by = n.cy + n.h / 2;
+    const label = `☰ ${tasks[2].length} งานย่อย`, bw = 78;
+    el("rect", { x: bx - bw, y: by - 9, width: bw, height: 18, rx: 9, fill: "var(--card)", stroke: "var(--human-bd)" }, g);
+    const t = el("text", { x: bx - bw / 2, y: by, "text-anchor": "middle", "dominant-baseline": "middle",
+      "font-size": 11, fill: "var(--human-fg)" }, g);
+    t.textContent = label;
+  }
+}
+
+// ---------- zoom ----------
+const scroller = document.getElementById("scroller"), zlevel = document.getElementById("zlevel"),
+      tip = document.getElementById("tip");
+const MINZ = 0.15, MAXZ = 4;
+let z = 1;
+const laneW = () => lanesBox.offsetWidth;
+function apply() {
+  chart.setAttribute("width", W * z); chart.setAttribute("height", H * z);
+  lanesBox.querySelectorAll(".lane").forEach(d => d.style.height = d.dataset.h * z + "px");
+  zlevel.textContent = Math.round(z * 100) + "%";
+}
+// ซูมโดยให้จุด (px, py) บนจอค้างอยู่ที่เดิม
+function zoomTo(nz, px = scroller.clientWidth / 2, py = scroller.clientHeight / 2) {
+  nz = Math.max(MINZ, Math.min(MAXZ, nz));
+  const cx = (scroller.scrollLeft + px - laneW()) / z, cy = (scroller.scrollTop + py) / z;
+  z = nz; apply();
+  scroller.scrollLeft = cx * z + laneW() - px;
+  scroller.scrollTop = cy * z - py;
+}
+const fit = () => {
+  z = Math.max(MINZ, Math.min(1, (scroller.clientWidth - laneW() - 4) / W, (scroller.clientHeight - 4) / H));
+  apply(); scroller.scrollLeft = 0; scroller.scrollTop = 0;
+};
+document.getElementById("zin").onclick = () => zoomTo(z * 1.25);
+document.getElementById("zout").onclick = () => zoomTo(z / 1.25);
+document.getElementById("z100").onclick = () => zoomTo(1);
+document.getElementById("z200").onclick = () => zoomTo(2);
+document.getElementById("zfit").onclick = fit;
+
+// Ctrl/⌘ + ล้อเมาส์ หรือ pinch บน touchpad
+scroller.addEventListener("wheel", e => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  const r = scroller.getBoundingClientRect();
+  zoomTo(z * Math.exp(-e.deltaY * 0.0025), e.clientX - r.left, e.clientY - r.top);
+}, { passive: false });
+
+// คีย์ลัด
+addEventListener("keydown", e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === "+" || e.key === "=") zoomTo(z * 1.25);
+  else if (e.key === "-" || e.key === "_") zoomTo(z / 1.25);
+  else if (e.key === "0") fit();
+  else if (e.key === "1") zoomTo(1);
+  else if (e.key === "Escape") select(null);
+});
+
+// ลากเพื่อเลื่อน + pinch บนจอสัมผัส
+const pts = new Map();
+let drag = null, pinch = null, moved = false;
+scroller.addEventListener("pointerdown", e => {
+  pts.set(e.pointerId, e); moved = false;
+  if (pts.size === 1) drag = { x: e.clientX, y: e.clientY, sl: scroller.scrollLeft, st: scroller.scrollTop };
+  if (pts.size === 2) {
+    const [a, b] = [...pts.values()];
+    pinch = { d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), z }; drag = null;
+  }
+});
+addEventListener("pointermove", e => {
+  if (!pts.has(e.pointerId)) return;
+  pts.set(e.pointerId, e);
+  if (pinch && pts.size === 2) {
+    const [a, b] = [...pts.values()], r = scroller.getBoundingClientRect();
+    const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    zoomTo(pinch.z * d / pinch.d, (a.clientX + b.clientX) / 2 - r.left, (a.clientY + b.clientY) / 2 - r.top);
+  } else if (drag) {
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 4) { moved = true; scroller.classList.add("drag"); tip.style.display = "none"; }
+    scroller.scrollLeft = drag.sl - dx; scroller.scrollTop = drag.st - dy;
+  }
+});
+const end = e => {
+  pts.delete(e.pointerId);
+  if (pts.size < 2) pinch = null;
+  if (!pts.size) { drag = null; scroller.classList.remove("drag"); }
+};
+addEventListener("pointerup", end); addEventListener("pointercancel", end);
+
+// คลิกกล่อง → ซูมไปที่กล่อง + แผงรายละเอียด + ไฮไลต์เส้นที่เกี่ยวข้อง
+const panel = document.getElementById("panel");
+let selected = null;
+
+function zoomToNode(id, behavior = "smooth") {
+  const n = node[id];
+  z = Math.max(z, 1.8); apply();
+  scroller.scrollTo({ left: n.cx * z + laneW() - (scroller.clientWidth) / 2,
+                      top: n.cy * z - scroller.clientHeight / 2, behavior });
+}
+
+const tg = (tag, cls, text) => {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+};
+// "_(รอระบุ)_" → ป้ายสีเทา
+function rich(text) {
+  const frag = document.createDocumentFragment();
+  text.split(/(_\(รอระบุ\)_)/).forEach(part => {
+    if (!part) return;
+    frag.append(part === "_(รอระบุ)_" ? tg("span", "pending", "รอระบุ") : part.replace(/\*\*/g, ""));
+  });
+  return frag;
+}
+function nodeTitle(id) { return node[id].text.replace(/\n/g, " "); }
+
+function renderPanel(id) {
+  const n = node[id], det = DETAILS[stepNo(n.text)];
+  panel.replaceChildren();
+  const top = tg("div", "top"), head = tg("div");
+  head.append(tg("div", "lane-tag", laneName[laneOf[id]]));
+  head.append(tg("h2", null, det ? `${stepNo(n.text)} ${det.title}` : nodeTitle(id)));
+  const close = tg("button", null, "✕");
+  close.setAttribute("aria-label", "ปิด");
+  close.onclick = () => select(null);
+  top.append(head, close);
+  panel.append(top);
+
+  if (det) {
+    if (det.note) panel.append(tg("p", "note", det.note));
+    const dl = tg("dl");
+    for (const [k, v, sub] of det.fields) {
+      const dd = tg("dd");
+      if (v) dd.append(rich(v));
+      if (sub.length) {
+        const list = tg(k === "การดำเนินการ" ? "ol" : "ul");
+        sub.forEach(item => { const li = tg("li"); li.append(rich(item)); list.append(li); });
+        dd.append(list);
+      }
+      dl.append(tg("dt", null, k), dd);
+    }
+    panel.append(dl);
+  } else if (n.type === "todo") {
+    panel.append(tg("p", "note", "ยังไม่ได้ระบุขั้นถัดไป"));
+  }
+
+  const section = (title, list) => {
+    if (!list.length) return;
+    panel.append(tg("h3", null, title));
+    const box = tg("div", "links");
+    for (const [other, label] of list) {
+      const b = tg("button");
+      b.append(tg("span", null, nodeTitle(other)));
+      if (label) b.append(tg("small", null, label.replace(/\n/g, " ")));
+      b.onclick = () => { select(other); zoomToNode(other); };
+      box.append(b);
+    }
+    panel.append(box);
+  };
+  section("มาจาก", EDGES.filter(e => e[1] === id).map(e => [e[0], e[2]]));
+  section("ไปต่อ", EDGES.filter(e => e[0] === id).map(e => [e[1], e[2]]));
+
+  const actions = tg("div", "actions"), zb = tg("button", null, "🔍 ซูมไปที่ขั้นนี้");
+  zb.onclick = () => zoomToNode(id);
+  actions.append(zb);
+  panel.append(actions);
+}
+
+function select(id) {
+  selected = id;
+  chart.classList.toggle("has-sel", !!id);
+  chart.querySelectorAll(".on, .sel").forEach(e => e.classList.remove("on", "sel"));
+  if (!id) { panel.classList.remove("open"); return; }
+  const near = new Set([id]);
+  chart.querySelectorAll(".edge").forEach(e => {
+    if (e.dataset.a === id || e.dataset.b === id) {
+      e.classList.add("on"); near.add(e.dataset.a); near.add(e.dataset.b);
+    }
+  });
+  chart.querySelectorAll(".node").forEach(g => {
+    if (near.has(g.dataset.id)) g.classList.add("on");
+    if (g.dataset.id === id) g.classList.add("sel");
+  });
+  renderPanel(id);
+  panel.classList.add("open");
+  panel.scrollTop = 0;
+}
+
+chart.addEventListener("click", e => {
+  if (moved) return;
+  const g = e.target.closest(".node");
+  if (!g) { select(null); return; }
+  if (g.dataset.id === selected) { select(null); return; }
+  tip.style.display = "none";
+  select(g.dataset.id);
+  zoomToNode(g.dataset.id);
+});
+// tooltip ตัวใหญ่ อ่านง่ายตอนซูมออกอยู่
+const laneName = Object.fromEntries(LANES);
+const laneOf = Object.fromEntries(NODES.map(n => [n[0], n[1]]));
+chart.addEventListener("pointermove", e => {
+  const g = e.target.closest(".node");
+  if (!g || moved) { tip.style.display = "none"; return; }
+  const id = g.dataset.id, sm = document.createElement("small");
+  sm.textContent = laneName[laneOf[id]];
+  tip.replaceChildren(sm, node[id].text.replace(/\n/g, " "));
+  tip.style.display = "block";
+  tip.style.left = Math.min(e.clientX + 16, innerWidth - tip.offsetWidth - 8) + "px";
+  tip.style.top = Math.min(e.clientY + 16, innerHeight - tip.offsetHeight - 8) + "px";
+});
+chart.addEventListener("pointerleave", () => tip.style.display = "none");
+
+addEventListener("resize", () => { if (z < 1) fit(); });
+fit();
+// เปิดลิงก์แบบ 05-workflow.html#f1 เพื่อเลือกขั้นนั้นทันที
+if (node[location.hash.slice(1)]) { const id = location.hash.slice(1); select(id); setTimeout(() => zoomToNode(id, "auto"), 0); }
+</script>
+</body>
+</html>
